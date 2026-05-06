@@ -1,7 +1,8 @@
 ---
-# Pre-create the namespace explicitly so ExternalSecrets in tesserix-k8s
-# (external-secrets/prod/kargo-fanzone/) can land BEFORE the Kargo
-# management-controller picks up the Project resource.
+# Kargo enforces: Project.metadata.name == namespace name. So the
+# Project is called `kargo-fanzone` to match the kargo-fanzone
+# namespace pre-created here. The label on the namespace must
+# also match the project name for Kargo to adopt it.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -9,15 +10,14 @@ metadata:
   labels:
     app.kubernetes.io/part-of: tesseract-platform
     app.kubernetes.io/component: release
-    kargo.akuity.io/project: fanzone
+    kargo.akuity.io/project: kargo-fanzone
 ---
-# In Kargo 1.9, Project is a cluster-scoped marker resource with no
-# spec — it just adopts (or creates) the namespace and provisions
-# default RBAC.
+# Cluster-scoped Project marker. No spec in Kargo 1.9 — promotion
+# policies live in a sibling ProjectConfig CRD.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Project
 metadata:
-  name: fanzone
+  name: kargo-fanzone
   annotations:
     kargo.akuity.io/description: |
       FanZone Battle Ground (fanzonebattleground.com).
@@ -25,19 +25,14 @@ metadata:
       to ghcr.io/tesserix/fanzone-battle-ground/* and patches the
       corresponding Argo CD Applications' helm.parameters.image.tag.
 ---
-# Project-level configuration moved out of Project.spec into the
-# separate ProjectConfig CRD in Kargo 1.9. Lives in the project
-# namespace (not cluster-scoped) and shares the same name as the
-# Project.
+# Project-level config (Kargo 1.9). Lives in the project namespace and
+# shares the project's name.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: ProjectConfig
 metadata:
-  name: fanzone
+  name: kargo-fanzone
   namespace: kargo-fanzone
 spec:
-  # prod auto-promotes — any new main-<sha> tag picked up by the
-  # Warehouse becomes a new Freight which is immediately promoted onto
-  # every fanzone Argo CD Application.
   promotionPolicies:
     - stage: prod
       autoPromotionEnabled: true
