@@ -105,16 +105,11 @@ jobs:
           # schemas live under .crds/jsonschemas/<kind>-<group>-<version>.json.
           CRD_SCHEMA='.crds/jsonschemas/{{ .ResourceKind }}-{{ .Group }}-{{ .ResourceAPIVersion }}.json'
 
+          # The kargo-manifests repo has no argocd/ directory of its
+          # own — the ApplicationSet that turns this repo into Argo CD
+          # Applications lives in tesserix-k8s. Validate everything
+          # under projects/ + templates/.
           find projects templates -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 \
-            | xargs -0 -r kubeconform \
-                -strict \
-                -summary \
-                -ignore-missing-schemas \
-                -schema-location default \
-                -schema-location "$CRD_SCHEMA"
-
-          # ApplicationSet under argocd/ uses the same converted schemas.
-          find argocd -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 \
             | xargs -0 -r kubeconform \
                 -strict \
                 -summary \
