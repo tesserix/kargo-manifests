@@ -11,6 +11,9 @@ metadata:
     app.kubernetes.io/component: release
     kargo.akuity.io/project: fanzone
 ---
+# In Kargo 1.9, Project is a cluster-scoped marker resource with no
+# spec — it just adopts (or creates) the namespace and provisions
+# default RBAC.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Project
 metadata:
@@ -21,6 +24,16 @@ metadata:
       One-env (prod) deploy: Kargo discovers new main-<sha> tags pushed
       to ghcr.io/tesserix/fanzone-battle-ground/* and patches the
       corresponding Argo CD Applications' helm.parameters.image.tag.
+---
+# Project-level configuration moved out of Project.spec into the
+# separate ProjectConfig CRD in Kargo 1.9. Lives in the project
+# namespace (not cluster-scoped) and shares the same name as the
+# Project.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: fanzone
+  namespace: kargo-fanzone
 spec:
   # prod auto-promotes — any new main-<sha> tag picked up by the
   # Warehouse becomes a new Freight which is immediately promoted onto

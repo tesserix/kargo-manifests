@@ -1,8 +1,7 @@
 ---
 # Pre-create the namespace explicitly so ExternalSecrets in tesserix-k8s
 # (external-secrets/prod/kargo-mark8ly/) can land BEFORE the Kargo
-# management-controller picks up the Project resource. Kargo adopts a
-# pre-existing namespace as long as it doesn't conflict.
+# management-controller picks up the Project resource.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -12,6 +11,9 @@ metadata:
     app.kubernetes.io/component: release
     kargo.akuity.io/project: mark8ly
 ---
+# In Kargo 1.9, Project is a cluster-scoped marker resource with no
+# spec — it just adopts (or creates) the namespace and provisions
+# default RBAC.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Project
 metadata:
@@ -22,6 +24,14 @@ metadata:
       One-env (prod) deploy: image bumps land directly into the
       `mark8ly` namespace via Argo CD Applications already running
       under the `mark8ly` AppProject.
+---
+# Project-level configuration moved out of Project.spec into the
+# separate ProjectConfig CRD in Kargo 1.9.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: mark8ly
+  namespace: kargo-mark8ly
 spec:
   # prod auto-promotes — any new sha-<...> tag picked up by the
   # Warehouse becomes a new Freight which is immediately promoted onto
