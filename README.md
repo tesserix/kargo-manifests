@@ -12,6 +12,20 @@ under `argocd/prod/infrastructure/kargo.yaml` and the
 This repo only contributes *what* gets promoted, not the platform that
 runs it.
 
+## Phase 1 status
+
+| Project | State | Tag pattern | Strategy | Notes |
+|---|---|---|---|---|
+| `kargo-fanzone` | ✅ live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 23 services, multi-arch OCI images, `platform: linux/amd64` |
+| `kargo-mark8ly` | ✅ live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `Lexical` | 8 Apps from 7 image repos, single-arch Docker v2 manifests, no platform filter |
+
+Phase 2 candidates (not yet onboarded): `homechef`, `devai`, `gameverse`,
+`tesserix-blog`, `social`, `scrapper`, `stockpilot`, `bookkeeping`,
+`guardix`. Pattern is the same as fanzone/mark8ly — see
+[`docs/adding-a-project.md`](docs/adding-a-project.md) for the
+runbook and [`docs/phase-1-retrospective.md`](docs/phase-1-retrospective.md)
+for the 13 gotchas to avoid.
+
 ## Layout
 
 ```

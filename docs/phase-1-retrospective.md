@@ -244,6 +244,129 @@ ignoreDifferences:
       - /status
 ```
 
+### 10. `platform: linux/amd64` silently drops single-arch images
+Kargo's image selector applies the `platform` constraint by reading
+platform metadata **out of the manifest**. That works when the build
+publishes a multi-arch OCI image index
+(`application/vnd.oci.image.index.v1+json`) where each entry has a
+`platform: { os, architecture }` block — but a single-arch
+`application/vnd.docker.distribution.manifest.v2+json` manifest
+**carries no platform metadata at all**; the OS/arch is determined by
+the image *config blob*, not the manifest. The selector finds no
+platform match in the manifest and silently `continue`s past the tag
+(no error, no log, just `0 references discovered`).
+
+This was the failure mode for mark8ly: every CI image is single-arch
+linux/amd64 but published as a flat Docker v2 manifest. The
+Warehouse listed tags fine, applied the regex fine, then `getImagesByTags`
+quietly returned an empty list.
+
+Fix: **drop the `platform:` line for single-arch images**.
+
+```yaml
+subscriptions:
+  - image:
+      repoURL: asia-south1-docker.pkg.dev/.../<svc>
+      imageSelectionStrategy: Lexical
+      allowTags: '^main-[a-f0-9]{7,12}$'
+      # platform: linux/amd64    # <-- omit for single-arch builds
+      discoveryLimit: 5
+```
+
+Keep the constraint for multi-arch OCI indexes (fanzone) — it picks
+the right entry out of the index.
+
+### 11. `NewestBuild` needs manifest-config fetches; budget accordingly
+`imageSelectionStrategy: NewestBuild` ranks tags by their image's
+`org.opencontainers.image.created` annotation, which lives in the
+*config blob* — a separate registry call per tag in addition to the
+manifest fetch. With cold GAR cache + many tags, you burn through
+the upstream-fetch quota fast (see gotcha #8) and may end up with a
+warehouse that can never complete its first scan.
+
+`imageSelectionStrategy: Lexical` only sorts the tag strings — no
+config fetch, no manifest config dependency, no cold-cache problem.
+For SHA-based tags (`sha-<12hex>`, `main-<sha7>`) the lexical order
+isn't strictly time-ordered, but in practice we promote *the latest
+tag* (whichever sorted last), so it's fine for our use case.
+
+Use NewestBuild when the *order* of tags matters (e.g. you want to
+promote the most-recently-built image regardless of name). Use
+Lexical when you just want "the matching tag" with minimal registry
+chatter.
+
+### 12. Don't run `bump-image-in-tesserix-k8s` from CI when Kargo is on
+Some products (mark8ly, originally) had a CI job that committed image
+tags directly to tesserix-k8s `charts/apps/<svc>/values.yaml`. Once a
+Kargo Project is in front of those Apps, that job becomes:
+
+- **Redundant** — Kargo writes `spec.source.helm.parameters.image.tag`
+  on the Argo CD Application; helm parameters override values.yaml.
+- **Inconsistent** — the bump-k8s job and the build job often compute
+  short SHAs differently (12 chars vs 7), producing values.yaml
+  references to tags that were never pushed.
+- **Adversarial** — every CI commit churns tesserix-k8s with a value
+  that Kargo will overwrite seconds later anyway.
+
+Delete the bump-k8s job. Kargo + the GAR mirror are the deploy path
+now.
+
+### 14. Test the *new image* before declaring victory
+Symptom: Kargo Promotion `Succeeded`, Argo CD App `Synced/Healthy`,
+Stage `Healthy` — but the new pod is in `Init:RunContainerError` and
+the rolling-update is stalled with the *old* replica still serving.
+
+Cause we hit: the new `mark8ly-auth-bff:main-<sha>` image was built
+without the `/migrate` init-container binary at the path the
+Deployment expects. Kargo + Argo CD did their jobs; the image itself
+was broken. Look at the failing pod's events:
+
+```
+Warning  Failed   ... Error: failed to create containerd task:
+  ... exec: "/migrate": stat /migrate: no such file or directory
+```
+
+That's an upstream Dockerfile / build-stage bug, not a Kargo issue.
+Fix in the application repo's Dockerfile. Kargo will auto-promote the
+fix on the next CI build.
+
+To temporarily pin to the previous (working) Freight while the
+Dockerfile is fixed: in the Kargo UI, open the Project → Stage →
+*Promote* a specific older Freight. Don't disable
+`autoPromotionEnabled` globally — that just delays the next bad
+image, it doesn't fix anything.
+
+### 13. `app-of-apps` `selfHeal: true` reverts Kargo's helm.parameters
+A parent Argo CD Application that syncs a directory of child
+Applications (e.g. `fanzone-app-of-apps` reading
+`argocd/prod/apps/fanzone/`) treats each child Application's
+`spec.source.helm.parameters` as a managed field. When Kargo's
+`argocd-update` step writes a new `image.tag` value, the parent
+detects drift and self-heals it back to whatever the git copy says.
+The result: Kargo says "promotion succeeded" but the actual deploy
+is still pinned to the placeholder, and the Knative service stays
+on the wrong tag (often a 404 if the placeholder was a fake SHA).
+
+Fix: add `ignoreDifferences` + `RespectIgnoreDifferences=true` to the
+parent app-of-apps so it doesn't fight Kargo on that path.
+
+```yaml
+spec:
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Application
+      jsonPointers:
+        - /spec/source/helm/parameters
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - RespectIgnoreDifferences=true
+```
+
+Apply this to **every** product app-of-apps that has Kargo wiring.
+
 ## Architecture as deployed
 
 ```
@@ -314,29 +437,127 @@ is **kargo.akuity.io/* CRDs and a project Namespace**.
 Run through this checklist for each of homechef, devai, gameverse,
 blog, social, scrapper, stockpilot, bookkeeping, guardix:
 
-1. Identify the GHCR repos the product publishes — `gh package list`
-   or look at `kubectl -n <P> get deploy -o jsonpath='{...}'`.
-2. Identify the tag pattern (`main-<sha>`, `sha-<sha>`, semver,
-   `latest+digest`) — this becomes the Warehouse's `allowTags`.
-3. Inventory the Argo CD Applications under
-   `tesserix-k8s/argocd/prod/apps/<P>/` and add the
-   `kargo.akuity.io/authorized-stage: kargo-<P>:prod` annotation +
-   `helm.parameters.image.tag` placeholder to each.
-4. Create `kargo-manifests/projects/<P>/{project,warehouses/services,stages/prod}.yaml`
-   following the `mark8ly` shape. (mark8ly is the cleanest single-bundle
-   reference; fanzone is the multi-service per-Argo-App reference.)
-5. Add `external-secrets/prod/kargo-<P>/` to tesserix-k8s. Just a
-   regex-scoped clone of the existing kargo-mark8ly file.
-6. Push both repos. Watch:
-   - `kubectl -n argocd get app kargo-project-<P>` → Synced/Healthy
-   - `kubectl get project.kargo.akuity.io kargo-<P>` → Ready/True
-   - `kubectl -n kargo-<P> get warehouse services` → Ready/True (after
-     ~60 s)
-   - `kubectl -n kargo-<P> get freight` → at least one entry
-   - `kubectl -n kargo-<P> get promotion` → eventually Succeeded
-7. From the Kargo UI (`https://kargo.tesserix.app`) verify the
-   Project shows up and a Freight has been promoted.
+### A. Discover the product's image facts (do these BEFORE writing any YAML)
+
+1. **Image repos** — `gh package list --user tesserix --filter <P>` or
+   `kubectl -n <P> get deploy,ksvc -o jsonpath='{range .items[*]}{.spec.template.spec.containers[0].image}{"\n"}{end}'`.
+2. **Tag pattern** — what does CI emit? Look at `*-build.yml` /
+   `ci.yml` in the application repo. Standard now is `main-<sha7-12>`.
+3. **Manifest type** — single-arch Docker v2 or multi-arch OCI index?
+   ```bash
+   TOKEN=$(gcloud auth print-access-token)
+   curl -sS -H "Authorization: Bearer $TOKEN" \
+     -H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.v2+json" \
+     https://ghcr.io/v2/tesserix/<service>/manifests/<latest-tag> | jq .mediaType
+   ```
+   If it's `image.index.v1+json` → keep `platform: linux/amd64`.
+   If it's `manifest.v2+json` → **omit** platform constraint (gotcha #10).
+
+### B. Clean up the application's CI workflow (in the product repo, not tesserix-k8s)
+
+4. **Drop `:latest` tag emission** — both from `metadata-action` and
+   from any `Trivy`/scanning steps that reference `:latest`. Replace
+   with `main-<sha>` from the metadata-action output.
+5. **Remove any post-build `kubectl patch ksvc` / `kubectl rollout`
+   step**. Kargo owns deploys; CI's job ends after image push.
+6. **Remove any `bump-image-in-tesserix-k8s` job** (gotcha #12). Kargo
+   writes `helm.parameters` directly — we don't want CI also
+   committing values.yaml bumps in parallel.
+7. **Pin the short-SHA length** — pick 7 or 12 chars and use it
+   consistently for both the build tag AND any places the bump might
+   reference. Mismatched 7/12 char shorts produced phantom values.yaml
+   tags during onboarding.
+
+### C. Update the Argo CD Apps in tesserix-k8s
+
+8. For each Application under `argocd/prod/apps/<P>/*.yaml`:
+   - Add annotation `kargo.akuity.io/authorized-stage: kargo-<P>:prod`.
+   - Add `spec.source.helm.parameters` with at least
+     `- name: image.tag, value: "<some-current-tag>"`. Doesn't matter
+     what the value is — Kargo overwrites on first promotion. Just
+     can't be empty or missing.
+   - Don't put `image.tag: "latest"` here — combined with
+     `pullPolicy: Always` it creates a race where every cold-start
+     pulls a different digest, fighting Kargo (gotcha that bit fanzone).
+9. The parent `<P>-app-of-apps.yaml` must add (gotcha #13):
+   ```yaml
+   ignoreDifferences:
+     - group: argoproj.io
+       kind: Application
+       jsonPointers:
+         - /spec/source/helm/parameters
+   syncPolicy:
+     syncOptions:
+       - RespectIgnoreDifferences=true
+   ```
+
+### D. Create the Kargo Project in this repo
+
+10. `cp -R docs/examples/sample-product projects/<P>` then edit:
+    - `project.yaml`: replace `sample-product` with `kargo-<P>` in
+      Namespace, Project, ProjectConfig — all three resource names.
+      Keep the namespace label `kargo.akuity.io/project: "true"` exactly.
+    - `warehouses/services.yaml`: one subscription per service. URLs
+      point at `asia-south1-docker.pkg.dev/.../ghcr-remote/tesserix/<svc>`.
+      Set `imageSelectionStrategy: Lexical`, `strictSemvers: false`,
+      `interval: 300s`, `discoveryLimit: 5`. Drop `platform:` if
+      step 3 said the manifests are single-arch.
+    - `stages/prod.yaml`: one `argocd-update` step per Argo CD App in
+      `tesserix-k8s/argocd/prod/apps/<P>/`. Use `imageFrom("...").Tag`
+      with the GAR mirror URL exactly matching the Warehouse's repoURL.
+
+### E. Add image creds (only if needed)
+
+11. If you're watching GAR (recommended) and the kargo-controller GCP
+    SA already has `roles/artifactregistry.reader` (it does after
+    Phase 1), **skip this step entirely** — Workload Identity handles
+    it cluster-wide. If you're watching GHCR directly, add an
+    ExternalSecret at
+    `tesserix-k8s/external-secrets/prod/kargo-<P>/externalsecret.yaml`
+    sourcing `prod-ghcr-username`/`prod-ghcr-token` with regex
+    `^ghcr\.io/tesserix/<P>-.*` and label
+    `kargo.akuity.io/cred-type: image`.
+
+### F. Push and validate
+
+12. Push tesserix-k8s + kargo-manifests changes. Validate in this order:
+    - `kubectl -n argocd get app kargo-project-<P>` → Synced/Healthy
+    - `kubectl get project.kargo.akuity.io kargo-<P>` → Ready/True
+    - `kubectl -n kargo-<P> get warehouse services` → Ready/True after
+      one cycle (≤ 5 min). If `MissingImageReferences` persists, see
+      gotchas #8, #10, #11.
+    - `kubectl -n kargo-<P> get freight` → at least one entry within 5
+      min. Each `images[]` entry in the Freight must have a non-empty
+      `digest` (else the platform filter dropped it; see gotcha #10).
+    - `kubectl -n kargo-<P> get promotion` → eventually Succeeded.
+    - **Test the new image actually starts** (gotcha #14):
+      `kubectl -n <P> get pods` — old + new replicas, new should
+      reach Ready=1/1. If new is in `Init:RunContainerError` /
+      `CrashLoopBackOff`, that's an upstream Dockerfile bug, not a
+      Kargo issue. Roll back the Stage to a known-good Freight via
+      the Kargo UI's Promote button while you fix the build.
+13. Open the Kargo UI (https://kargo.tesserix.app) → verify the
+    Project shows up, has a Warehouse / Stage / Freight / Promotion,
+    and the Stage box is green.
 
 If a step gets stuck, the log of `deploy/kargo-controller` (in the
 `kargo` namespace, log level `INFO`) tells you exactly which CRD or
-network call is failing.
+network call is failing. The 14 gotchas above cover everything we hit
+during fanzone + mark8ly onboarding.
+
+## Phase 1 verified end-to-end
+
+| Project | First Freight | Outcome |
+|---|---|---|
+| `kargo-fanzone` | `joyous-chicken` (`main-b3b1fa8`) | Stage `Healthy=True, Verified` — 23/23 services running on per-service `main-<sha>` |
+| `kargo-mark8ly` | `dangling-indri` (`main-03dff04` → `main-8ad1c6c`) | Auto-promotion working; latest CI image has an unrelated Dockerfile bug missing `/migrate` (gotcha #14 — old replica still serving) |
+
+Auto-promotion proved with TWO independent CI pushes:
+1. fanzone-battle-ground commit `b3b1fa8` → CI built → GAR cached →
+   Kargo Warehouse polled → Freight `joyous-chicken` → auto-promote
+   → 23 Argo CD Applications updated → Knative rolled.
+2. mark8ly commit `8ad1c6c` → same flow, all 8 mark8ly Apps got the
+   new tag. (Image is broken upstream, but Kargo's part worked.)
+
+GHCR egress went to **0** for these two products — Kargo reads the
+in-region GAR mirror via Workload Identity.

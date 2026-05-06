@@ -17,17 +17,25 @@ service inside an existing product) into Kargo-driven promotions.
 
 ```
 projects/<product>/
-├── project.yaml                # Project + Roles + RoleBindings + per-project secrets references
+├── project.yaml                # Namespace + Project + ProjectConfig
 ├── warehouses/
-│   ├── <service-a>.yaml        # one Warehouse per artifact source
-│   └── <service-b>.yaml
+│   └── services.yaml           # one Warehouse, one image subscription per service
 └── stages/
-    ├── dev.yaml                # Stage(dev) — auto-promotion enabled, watches the warehouses
-    ├── staging.yaml            # Stage(staging) — promoted from dev, manual approval
-    └── prod.yaml               # Stage(prod) — promoted from staging, hard manual gate
+    └── prod.yaml               # Stage(prod) — auto-promotes from the bundled Warehouse
 ```
 
+For multi-env cascading (dev → staging → prod), the
+[`docs/examples/sample-product/`](examples/sample-product/) tree
+shows the layout. We deliberately use only `prod` in Phase 1 — single
+env per cluster.
+
 ## Step-by-step
+
+> **Read this first:** [`phase-1-retrospective.md`](phase-1-retrospective.md)
+> — 13 gotchas we burned through onboarding fanzone + mark8ly. Especially
+> #3 (label value), #8 (GAR upstream quota), #10 (single-arch platform
+> filter), #11 (Lexical vs NewestBuild), #13 (parent app-of-apps must
+> ignore helm.parameters).
 
 ### 1. Pick a name
 
@@ -38,6 +46,11 @@ existing tesserix-k8s convention (e.g. `homechef`, `mark8ly`,
 destination wildcard (`kargo-*`) and into Argo CD's generated
 Application name (`kargo-project-<product>`).
 
+The Kargo Project resource itself is named **`kargo-<product>`**
+(matches the namespace; Kargo enforces this). The
+`kargo.akuity.io/authorized-stage` annotation on each Argo CD App is
+therefore `kargo-<product>:prod`.
+
 ### 2. Create the directory
 
 ```bash
@@ -46,48 +59,92 @@ mkdir -p projects/<product>/{warehouses,stages}
 
 ### 3. Write `project.yaml`
 
-Minimal template:
+Template (Kargo 1.9 — Project + ProjectConfig + Namespace):
 
 ```yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-<product>
+  labels:
+    kargo.akuity.io/project: "true"   # MUST be the literal "true", not the project name
+---
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Project
 metadata:
-  name: <product>
+  name: kargo-<product>               # MUST equal the namespace name
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-<product>
+  namespace: kargo-<product>
 spec:
-  promotionPolicies: []   # optional auto-promotion policies, see Stage docs
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true       # latest Freight auto-promotes onto prod
 ```
 
-You can also drop additional resources into the same file separated
-by `---` — typical adds are project-scoped Roles for service-specific
-RBAC, or `Secret`s with the `kargo.akuity.io/cred-type` label for
-git/image-pull credentials (those should be sourced from GCP Secret
-Manager via ExternalSecrets — never committed in plaintext).
+> Notes:
+> - **`Project.spec` doesn't exist in 1.9.** Promotion policies moved to `ProjectConfig`.
+> - **`Project.metadata.name` MUST equal the namespace name.** Kargo's webhook rejects mismatch.
+> - **Namespace label value is literally `"true"`**, not the project name.
 
-### 4. Define each Warehouse
+Image-credential Secrets and project-scoped Roles can live in the
+same file separated by `---`. Image creds aren't usually needed —
+the kargo-controller's GCP SA + Workload Identity gets the GAR mirror
+read access cluster-wide.
 
-One Warehouse per upstream artifact source. Most apps need:
+### 4. Define a single Warehouse with one subscription per service
 
-- **One image Warehouse** per service binary, watching `ghcr.io/tesserix/<service>` for new `main-<sha>` tags.
-- **One git Warehouse** if Stage promotion bumps a chart's `values.yaml` / Kustomize overlay (most do, since Argo CD on the GKE side renders from git).
+Use **one** Warehouse with N image subscriptions (cleaner than N
+warehouses). Each subscription corresponds to a service binary.
 
 ```yaml
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Warehouse
 metadata:
-  name: <service>
+  name: services
 spec:
   freightCreationPolicy: Automatic
-  interval: 60s
+  interval: 300s              # 5min — kind to GAR upstream-fetch quota (gotcha #8)
   subscriptions:
     - image:
-        repoURL: ghcr.io/tesserix/<service>
-        imageSelectionStrategy: NewestBuild
-        # only main-<sha7-8> tags trigger promotion; ignores :latest,
-        # release tags, semver, etc.
-        allowTags: '^main-[a-f0-9]{7,8}$'
-        platform: linux/amd64
-        discoveryLimit: 20
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/<service>
+        imageSelectionStrategy: Lexical    # see note below
+        allowTags: '^main-[a-f0-9]{7,12}$'  # main-<sha7-12> from CI
+        strictSemvers: false                # tags aren't semver — required (gotcha)
+        # platform: linux/amd64             # ONLY for multi-arch OCI indexes — gotcha #10
+        discoveryLimit: 5                   # newest 5 tags is plenty
 ```
+
+**Strategy choice:**
+- **`Lexical`** for SHA-based tags (`main-<sha>`, `sha-<sha>`). No
+  manifest-config fetch per tag, lighter on quota, "just works" with
+  any single-arch or multi-arch image. **Default for new projects.**
+- **`NewestBuild`** when you want strict newest-by-build-time and
+  your build pushes multi-arch OCI index manifests. Costs an extra
+  config-blob fetch per tag — see retrospective #11.
+
+**Platform filter:**
+- Multi-arch OCI image index (e.g. `docker buildx build --platform linux/amd64,linux/arm64`)
+  → keep `platform: linux/amd64`.
+- Single-arch Docker v2 manifest (typical buildx-action default for
+  one platform) → **omit** `platform:` entirely. Otherwise Kargo
+  silently filters every tag out and you get `MissingImageReferences`
+  with no errors logged (gotcha #10).
+
+**Quick test:**
+```bash
+TOKEN=$(gcloud auth print-access-token)
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.v2+json" \
+  https://ghcr.io/v2/tesserix/<service>/manifests/main-<sha7> \
+  | jq .mediaType
+```
+- `application/vnd.oci.image.index.v1+json` → multi-arch, keep platform
+- `application/vnd.docker.distribution.manifest.v2+json` → single-arch, drop platform
 
 ### 5. Define Stages
 
@@ -102,47 +159,58 @@ metadata:
   name: dev
 spec:
   requestedFreight:
-    - origin: { kind: Warehouse, name: <service> }
+    - origin: { kind: Warehouse, name: services }
       sources: { direct: true }
   promotionTemplate:
     spec:
       vars:
-        - name: imageRepo
-          value: ghcr.io/tesserix/<service>
+        - name: argocdRepo
+          value: https://github.com/tesserix/tesserix-k8s.git
       steps:
-        - uses: git-clone
-          config:
-            repoURL: https://github.com/tesserix/tesserix-k8s.git
-            checkout:
-              - branch: main
-                path: ./out
-        - uses: yaml-update
-          config:
-            path: ./out/charts/apps/<service>/values-prod.yaml
-            updates:
-              - key: image.tag
-                value: ${{ imageFrom(vars.imageRepo).Tag }}
-        - uses: git-commit
-          config:
-            path: ./out
-            message: 'chore(<service>): bump dev image to ${{ imageFrom(vars.imageRepo).Tag }}'
-        - uses: git-push
-          config: { path: ./out }
+        # one block per service — Kargo writes spec.source.helm.parameters.image.tag
+        # on each Argo CD Application directly. No git commits needed.
         - uses: argocd-update
           config:
             apps:
               - name: <service>
+                namespace: argocd
                 sources:
-                  - repoURL: https://github.com/tesserix/tesserix-k8s.git
-                    desiredRevision: ${{ outputs['git-commit'].commit }}
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/<service>").Tag }}
+        # repeat for every service in the project ...
 ```
 
-Then `staging.yaml` and `prod.yaml` look identical except:
-- `requestedFreight[].sources.direct: false` and instead
-  `requestedFreight[].sources.stages: [dev]` (or `[staging]` for prod).
-- The `git-clone` checkout path / Argo CD app name changes per env.
-- `prod.yaml` adds an approval gate: `verification` block, or simply no
-  `Stage`-level auto-promotion policy (controlled at the Project level).
+> **Phase 1 only ships a `prod` Stage.** Multi-stage cascading
+> (dev → staging → prod) is documented in
+> [`docs/examples/sample-product/`](examples/sample-product/) but
+> isn't yet used in this cluster — there's only one env.
+
+> **Don't write to git.** Kargo's `argocd-update` step writes
+> `spec.source.helm.parameters.image.tag` on the Argo CD Application
+> directly. We deliberately avoid the git-clone / yaml-update /
+> git-commit / git-push chain because:
+>
+> - Every promotion would churn tesserix-k8s (one commit per service ×
+>   N services × every CI build), making the history unreadable.
+> - The CI auto-bump-k8s job that some products had was duplicating
+>   exactly this work and producing inconsistent state (12 vs 7 char
+>   short SHAs — see retrospective #12).
+> - helm.parameters override values.yaml, so the parameter write is
+>   the source of truth at deploy time.
+>
+> The only adjustment needed in tesserix-k8s for each Argo CD App:
+>
+> 1. `metadata.annotations.kargo.akuity.io/authorized-stage:
+>    kargo-<product>:prod`
+> 2. `spec.source.helm.parameters` block with at least
+>    `name: image.tag, value: "<some-current-tag>"` so Helm has a
+>    parameter to overwrite.
+> 3. Parent `<product>-app-of-apps.yaml` gets an `ignoreDifferences`
+>    block on `/spec/source/helm/parameters` so it doesn't self-heal
+>    Kargo's writes (gotcha #13).
 
 ### 6. Verify locally
 
