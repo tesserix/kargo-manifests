@@ -18,161 +18,161 @@ spec:
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-api
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-auth
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-auth-bff
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-book-cricket
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-chat
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-cleanup
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-commentary
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-cricket-quiz
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-fan-connect
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-game
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-media
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-micro-prediction
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-moderation
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-notification
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-prediction
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-prediction-agent
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-prediction-bot
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-quest
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-sportsbook
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-user
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-web
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-ws
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/sports-data
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,8}$'
+        allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
