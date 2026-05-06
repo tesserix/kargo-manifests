@@ -20,14 +20,23 @@ runs it.
 | `kargo-mark8ly` | live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 8 Apps from 7 image repos, single-arch Docker v2 manifests, no platform filter |
 | `kargo-homechef` | live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 5 Apps (api + 4 portals), multi-arch OCI images, `platform: linux/amd64`. Shared `tesseract-nexus/global-services/auth-bff` image is out of scope here — it's used by DevAI too and will land under a separate `kargo-shared-services` Project. |
 | `kargo-tesserix-blog` | live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 1 App (tesserix-blog Next.js), single-arch Docker v2 manifest, no `platform:` filter. MongoDB sidecar (`mongo:7.0`) deliberately not subscribed (third-party image, no CI). |
+| `kargo-scrapper` | live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 3 Apps (scrapper-api, scrapper-mcp shares api image, scrapper-web), multi-arch OCI indexes, `platform: linux/amd64`. postiz-app + temporal (third-party) not subscribed. |
+| `kargo-stockpilot` | live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 3 Apps (stockpilot-api, stockpilot-web, stockpilot-worker shares api image), multi-arch. Replaces the previous bump-k8s auto-deploy job in `tesserix/stock-analysis` CI. fingpt-inference (Ollama) + openbb (third-party-ish) not subscribed yet. |
+| `kargo-gameverse` | live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 2 Apps (gameverse-server Rust + gameverse-shell Next.js), single-arch Docker v2 manifests, no `platform:` filter. gameverse-server runs on `base-distroless-static` (Rust + musl static-linked openssl). |
 
-Phase 2 remaining: `gameverse` (Rust — needs runbook addendum),
-`social`, `scrapper`, `stockpilot`, `devai`, `guardix`. The shared
+In addition to the image subscriptions, every Warehouse also subscribes
+to commits in `tesserix/tesserix-k8s` that touch the product's own
+Helm chart, values, or Argo CD Application YAML. So a config-only
+change (e.g. editing `charts/apps/fanzone-api/values-prod.yaml`)
+also flows through the same Freight + Promotion pipeline as image
+bumps. ArgoCD's existing auto-sync handles the actual deploy; Kargo
+provides the audit trail.
+
+Phase 2 remaining: `social`, `devai`, `guardix`. The shared
 `auth-bff` image used by HomeChef + DevAI also needs its own Project
 (`kargo-shared-services`). Bookkeeping was removed from the cluster
-on 2026-05-07 (not production-ready). Pattern is the same as
-fanzone/mark8ly/homechef/tesserix-blog — see
-[`docs/adding-a-project.md`](docs/adding-a-project.md) for the
+on 2026-05-07 (not production-ready). Pattern is the same as the live
+projects — see [`docs/adding-a-project.md`](docs/adding-a-project.md) for the
 runbook and [`docs/phase-1-retrospective.md`](docs/phase-1-retrospective.md)
 for the gotchas to avoid.
 
