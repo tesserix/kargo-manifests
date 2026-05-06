@@ -1,0 +1,37 @@
+---
+# Kargo enforces: Project.metadata.name == namespace name. So the
+# Project is called `kargo-tesserix-blog` to match the
+# kargo-tesserix-blog namespace pre-created here.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-tesserix-blog
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    # Per Kargo source (api/v1alpha1/labels.go LabelValueTrue), this
+    # label's value MUST be the literal string "true", not the project
+    # name.
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-tesserix-blog
+  annotations:
+    kargo.akuity.io/description: |
+      tesserix-blog — Next.js 16 engineering blog at blog.tesserix.app.
+      One-env (prod) deploy: image bumps land directly into the
+      `tesserix` namespace via the tesserix-blog Argo CD Application.
+      Backing MongoDB (mongodb-blog) is not a Kargo subscription —
+      it's a third-party `mongo:7.0` image with no CI pipeline.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-tesserix-blog
+  namespace: kargo-tesserix-blog
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
