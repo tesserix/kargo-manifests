@@ -1,0 +1,28 @@
+---
+# stockpilot-worker uses the SAME image as stockpilot-api (one Python
+# binary, two K8s deployments — API mode vs background worker mode),
+# so only TWO unique image subscriptions are needed.
+# Both are multi-arch OCI image indexes, so `platform: linux/amd64`
+# is REQUIRED (gotcha #10).
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s
+  subscriptions:
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/stock-analysis/stockpilot-api
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/stock-analysis/stockpilot-web
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5

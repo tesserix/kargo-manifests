@@ -1,0 +1,26 @@
+---
+# gameverse-server is Rust (tokio + axum), gameverse-shell is Next.js.
+# Both ship single-arch Docker v2 manifests today, so the `platform:`
+# filter is intentionally OMITTED (Phase-1 retrospective gotcha #10:
+# adding the filter on a single-arch image silently filters every
+# tag).
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s
+  subscriptions:
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/gameverse-server
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/gameverse-shell
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5

@@ -1,0 +1,33 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-stockpilot
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-stockpilot
+  annotations:
+    kargo.akuity.io/description: |
+      stockpilot — Python LangGraph stock-analysis platform with
+      Next.js web at stockpilot.tesserix.app.
+      One-env (prod) deploy. Replaces the previous bump-k8s
+      auto-deploy job that committed image.tag changes to
+      tesserix-k8s/charts/apps/stockpilot-{api,web,worker}/values-prod.yaml.
+      Third-party images (Ollama for fingpt-inference, openbb-api
+      upstream) are NOT subscribed.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-stockpilot
+  namespace: kargo-stockpilot
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true

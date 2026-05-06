@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-gameverse
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-gameverse
+  annotations:
+    kargo.akuity.io/description: |
+      gameverse-platform — Multiplayer board games platform at
+      stayandplays.com. Rust game-server (tokio + axum) +
+      Next.js shell. One-env (prod) deploy.
+      Postgres (CNPG) and Redis are infra, not subscribed.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-gameverse
+  namespace: kargo-gameverse
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
