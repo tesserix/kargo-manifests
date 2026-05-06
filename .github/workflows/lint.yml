@@ -61,11 +61,19 @@ jobs:
       - name: Pull Kargo + Argo CD CRDs
         if: steps.cache-crds.outputs.cache-hit != 'true'
         run: |
-          mkdir -p .crds
-          # Kargo CRDs (Project, Warehouse, Stage, Promotion, Freight, PromotionTask, ClusterPromotionTask)
-          curl -fsSL "https://raw.githubusercontent.com/akuity/kargo/v${{ env.KARGO_VERSION }}/charts/kargo/resources/crds/kargo-crds.yaml" \
-            -o .crds/kargo-crds.yaml
-          # Argo CD CRDs (Application, ApplicationSet, AppProject) — only used by the argocd/ dir
+          set -euo pipefail
+          mkdir -p .crds .crds/jsonschemas
+          # Kargo CRDs — since v1.9 these ship as one file per resource
+          # at charts/kargo/resources/crds/kargo.akuity.io_<plural>.yaml
+          # rather than the old bundled kargo-crds.yaml. Fetch each one
+          # and concatenate.
+          KARGO_CRDS_BASE="https://raw.githubusercontent.com/akuity/kargo/v${{ env.KARGO_VERSION }}/charts/kargo/resources/crds"
+          : > .crds/kargo-crds.yaml
+          for plural in clusterconfigs clusterpromotiontasks freights projectconfigs projects promotions promotiontasks stages warehouses; do
+            curl -fsSL "${KARGO_CRDS_BASE}/kargo.akuity.io_${plural}.yaml" >> .crds/kargo-crds.yaml
+            printf '\n---\n' >> .crds/kargo-crds.yaml
+          done
+          # Argo CD CRDs (Application, ApplicationSet, AppProject)
           curl -fsSL "https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.4/manifests/crds/application-crd.yaml" \
             -o .crds/argocd-application-crd.yaml
           curl -fsSL "https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.4/manifests/crds/applicationset-crd.yaml" \
@@ -73,34 +81,46 @@ jobs:
           curl -fsSL "https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.4/manifests/crds/appproject-crd.yaml" \
             -o .crds/argocd-appproject-crd.yaml
 
+          # kubeconform consumes JSON Schemas, not raw CRD YAMLs. Convert
+          # via the upstream openapi2jsonschema.py (kubeconform's own
+          # recommended path). Output filenames use the lower-case
+          # `<kind>-<group>-<version>.json` pattern that we plug into
+          # the schema-location template below.
+          pip install --quiet pyyaml
+          curl -fsSL "https://raw.githubusercontent.com/yannh/kubeconform/v0.6.7/scripts/openapi2jsonschema.py" -o /tmp/openapi2jsonschema.py
+          chmod +x /tmp/openapi2jsonschema.py
+          (
+            cd .crds/jsonschemas
+            FILENAME_FORMAT='{kind}-{fullgroup}-{version}' python3 /tmp/openapi2jsonschema.py ../kargo-crds.yaml
+            FILENAME_FORMAT='{kind}-{fullgroup}-{version}' python3 /tmp/openapi2jsonschema.py ../argocd-application-crd.yaml
+            FILENAME_FORMAT='{kind}-{fullgroup}-{version}' python3 /tmp/openapi2jsonschema.py ../argocd-applicationset-crd.yaml
+            FILENAME_FORMAT='{kind}-{fullgroup}-{version}' python3 /tmp/openapi2jsonschema.py ../argocd-appproject-crd.yaml
+          )
+          ls .crds/jsonschemas/ | head -20
+
       - name: Validate YAML against CRD schemas
         run: |
           set -euo pipefail
-          # kubeconform takes one or more --schema-location flags. We point at:
-          #  1. the standard kubernetes-json-schema repo (built-in)
-          #  2. our locally-cached CRDs (rendered into JSON-Schema by kubeconform on the fly)
+          # kubeconform schema-location template. The CRD-derived JSON
+          # schemas live under .crds/jsonschemas/<kind>-<group>-<version>.json.
+          CRD_SCHEMA='.crds/jsonschemas/{{ .ResourceKind }}-{{ .Group }}-{{ .ResourceAPIVersion }}.json'
+
           find projects templates -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 \
             | xargs -0 -r kubeconform \
                 -strict \
                 -summary \
                 -ignore-missing-schemas \
                 -schema-location default \
-                -schema-location '{{ .ResourceKind }}{{ .KindSuffix }}.json' \
-                -schema-location '.crds/kargo-crds.yaml' \
-                -schema-location '.crds/argocd-application-crd.yaml' \
-                -schema-location '.crds/argocd-applicationset-crd.yaml' \
-                -schema-location '.crds/argocd-appproject-crd.yaml'
+                -schema-location "$CRD_SCHEMA"
 
-          # Argo CD ApplicationSet under argocd/ is validated separately because we want
-          # to be strict about it but tolerate {{ .Values }}-style placeholders.
+          # ApplicationSet under argocd/ uses the same converted schemas.
           find argocd -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 \
             | xargs -0 -r kubeconform \
                 -strict \
                 -summary \
                 -ignore-missing-schemas \
                 -schema-location default \
-                -schema-location '.crds/argocd-applicationset-crd.yaml' \
-                -schema-location '.crds/argocd-application-crd.yaml'
+                -schema-location "$CRD_SCHEMA"
 
   kargo-render:
     name: argocd manifest render dry-run
