@@ -24,43 +24,43 @@ spec:
   interval: 60s
   subscriptions:
     - image:
-        repoURL: ghcr.io/tesserix/mark8ly-admin
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-admin
         imageSelectionStrategy: NewestBuild
         allowTags: '^sha-[a-f0-9]{12}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/mark8ly-auth-bff
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-auth-bff
         imageSelectionStrategy: NewestBuild
         allowTags: '^sha-[a-f0-9]{12}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/mark8ly-marketplace-api
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-marketplace-api
         imageSelectionStrategy: NewestBuild
         allowTags: '^sha-[a-f0-9]{12}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/mark8ly-onboarding
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-onboarding
         imageSelectionStrategy: NewestBuild
         allowTags: '^sha-[a-f0-9]{12}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/mark8ly-otto
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-otto
         imageSelectionStrategy: NewestBuild
         allowTags: '^sha-[a-f0-9]{12}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/mark8ly-platform-api
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-platform-api
         imageSelectionStrategy: NewestBuild
         allowTags: '^sha-[a-f0-9]{12}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/mark8ly-storefront
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-storefront
         imageSelectionStrategy: NewestBuild
         allowTags: '^sha-[a-f0-9]{12}$'
         platform: linux/amd64

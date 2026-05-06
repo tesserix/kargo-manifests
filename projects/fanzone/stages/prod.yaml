@@ -27,7 +27,7 @@ spec:
         - name: argocdRepo
           value: https://github.com/tesserix/tesserix-k8s.git
         - name: ghcrPrefix
-          value: ghcr.io/tesserix/fanzone-battle-ground
+          value: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground
 
       steps:
         # ----- fanzone-api -----

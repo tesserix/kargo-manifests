@@ -44,7 +44,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("ghcr.io/tesserix/mark8ly-admin").Tag }}
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-admin").Tag }}
 
         # ----- mark8ly-auth-bff -----
         - uses: argocd-update
@@ -57,7 +57,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("ghcr.io/tesserix/mark8ly-auth-bff").Tag }}
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-auth-bff").Tag }}
 
         # ----- mark8ly-marketplace-api (used by both admin + storefront Apps) -----
         - uses: argocd-update
@@ -70,7 +70,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("ghcr.io/tesserix/mark8ly-marketplace-api").Tag }}
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-marketplace-api").Tag }}
         - uses: argocd-update
           config:
             apps:
@@ -81,7 +81,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("ghcr.io/tesserix/mark8ly-marketplace-api").Tag }}
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-marketplace-api").Tag }}
 
         # ----- mark8ly-onboarding -----
         - uses: argocd-update
@@ -94,7 +94,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("ghcr.io/tesserix/mark8ly-onboarding").Tag }}
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-onboarding").Tag }}
 
         # ----- mark8ly-otto -----
         - uses: argocd-update
@@ -107,7 +107,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("ghcr.io/tesserix/mark8ly-otto").Tag }}
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-otto").Tag }}
 
         # ----- mark8ly-platform-api -----
         - uses: argocd-update
@@ -120,7 +120,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("ghcr.io/tesserix/mark8ly-platform-api").Tag }}
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-platform-api").Tag }}
 
         # ----- mark8ly-storefront -----
         - uses: argocd-update
@@ -133,4 +133,4 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("ghcr.io/tesserix/mark8ly-storefront").Tag }}
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-storefront").Tag }}

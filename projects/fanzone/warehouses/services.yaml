@@ -1,5 +1,5 @@
 ---
-# All fanzone services live under ghcr.io/tesserix/fanzone-battle-ground/.
+# All fanzone services live under asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/.
 # A single Warehouse with one image subscription per service emits a
 # Freight whenever ANY service publishes a new `main-<sha>` tag, with
 # the latest known references for ALL services included. The prod
@@ -16,139 +16,139 @@ spec:
   interval: 60s
   subscriptions:
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-api
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-api
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-auth
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-auth
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-auth-bff
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-auth-bff
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-book-cricket
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-book-cricket
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-chat
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-chat
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-cleanup
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-cleanup
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-commentary
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-commentary
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-cricket-quiz
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-cricket-quiz
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-fan-connect
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-fan-connect
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-game
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-game
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-media
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-media
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-micro-prediction
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-micro-prediction
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-moderation
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-moderation
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-notification
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-notification
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-prediction
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-prediction
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-prediction-agent
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-prediction-agent
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-prediction-bot
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-prediction-bot
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-quest
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-quest
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-sportsbook
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-sportsbook
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-user
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-user
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-web
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-web
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/fanzone-ws
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/fanzone-ws
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
         discoveryLimit: 20
     - image:
-        repoURL: ghcr.io/tesserix/fanzone-battle-ground/sports-data
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/fanzone-battle-ground/sports-data
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,8}$'
         platform: linux/amd64
