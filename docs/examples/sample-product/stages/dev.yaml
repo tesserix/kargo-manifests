@@ -1,0 +1,31 @@
+---
+# dev: pulls Freight directly from the warehouse, auto-promotes,
+# bumps charts/apps/sample-service/values.yaml in tesserix-k8s.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: dev
+  annotations:
+    kargo.akuity.io/color: '#65B741'
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: sample-service
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      vars:
+        - name: service
+          value: sample-service
+        - name: imageRepo
+          value: ghcr.io/tesserix/sample-service
+        - name: valuesPath
+          value: charts/apps/sample-service/values.yaml
+        - name: argocdAppName
+          value: sample-service-dev
+      steps:
+        - task:
+            kind: ClusterPromotionTask
+            name: bump-image-in-tesserix-k8s

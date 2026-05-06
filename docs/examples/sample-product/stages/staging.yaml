@@ -1,0 +1,33 @@
+---
+# staging: only takes Freight that has already verified in dev.
+# Auto-promotes — but you can flip this off later by adding a
+# verification block.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: staging
+  annotations:
+    kargo.akuity.io/color: '#F4CE14'
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: sample-service
+      sources:
+        stages:
+          - dev
+  promotionTemplate:
+    spec:
+      vars:
+        - name: service
+          value: sample-service
+        - name: imageRepo
+          value: ghcr.io/tesserix/sample-service
+        - name: valuesPath
+          value: charts/apps/sample-service/values-staging.yaml
+        - name: argocdAppName
+          value: sample-service-staging
+      steps:
+        - task:
+            kind: ClusterPromotionTask
+            name: bump-image-in-tesserix-k8s

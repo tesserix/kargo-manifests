@@ -1,0 +1,17 @@
+.DS_Store
+*.swp
+*.swo
+*.bak
+*~
+
+# editor / IDE
+.vscode/
+.idea/
+
+# nothing in this repo should be templated to disk
+*.rendered.yaml
+
+# downloaded charts / local helm cache (we don't render anything in this repo,
+# but in case anyone runs helm template against templates/ during a debug session)
+.helm/
+charts/*.tgz

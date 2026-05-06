@@ -1,0 +1,67 @@
+---
+# mark8ly's CI builds every service from the same commit, so every
+# `:sha-<12hex>` tag appears across all 7 image repos at roughly the
+# same time. We model that as a SINGLE Warehouse with 7 image
+# subscriptions — Kargo emits one Freight when ANY subscription sees a
+# new tag, and that single Freight references the latest tags across
+# every service. The prod Stage promotes them as one bundle.
+#
+# Note: the chart values in tesserix-k8s reference the GAR mirror
+# (`asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/...`),
+# but the Warehouse subscribes to GHCR directly because:
+#   - we already have a working PAT for GHCR (prod-ghcr-token)
+#   - GAR ACL only allows the GKE node SA, not the kargo-controller
+#   - tag listing has no bandwidth cost so the GAR mirror's main
+#     justification (NAT savings) doesn't apply here
+# `argocd-update` updates `image.tag` only, leaving image.repository
+# pointed at GAR for the actual pod pull.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  interval: 60s
+  subscriptions:
+    - image:
+        repoURL: ghcr.io/tesserix/mark8ly-admin
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^sha-[a-f0-9]{12}$'
+        platform: linux/amd64
+        discoveryLimit: 20
+    - image:
+        repoURL: ghcr.io/tesserix/mark8ly-auth-bff
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^sha-[a-f0-9]{12}$'
+        platform: linux/amd64
+        discoveryLimit: 20
+    - image:
+        repoURL: ghcr.io/tesserix/mark8ly-marketplace-api
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^sha-[a-f0-9]{12}$'
+        platform: linux/amd64
+        discoveryLimit: 20
+    - image:
+        repoURL: ghcr.io/tesserix/mark8ly-onboarding
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^sha-[a-f0-9]{12}$'
+        platform: linux/amd64
+        discoveryLimit: 20
+    - image:
+        repoURL: ghcr.io/tesserix/mark8ly-otto
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^sha-[a-f0-9]{12}$'
+        platform: linux/amd64
+        discoveryLimit: 20
+    - image:
+        repoURL: ghcr.io/tesserix/mark8ly-platform-api
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^sha-[a-f0-9]{12}$'
+        platform: linux/amd64
+        discoveryLimit: 20
+    - image:
+        repoURL: ghcr.io/tesserix/mark8ly-storefront
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^sha-[a-f0-9]{12}$'
+        platform: linux/amd64
+        discoveryLimit: 20

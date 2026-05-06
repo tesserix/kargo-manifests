@@ -1,0 +1,20 @@
+---
+# Watches GHCR for new main-<sha> tags on a single service binary.
+# Every match becomes a Freight that the dev Stage will auto-promote.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: sample-service
+spec:
+  freightCreationPolicy: Automatic
+  interval: 60s
+  subscriptions:
+    - image:
+        repoURL: ghcr.io/tesserix/sample-service
+        # NewestBuild = newest by image push time. Combined with the
+        # allowTags regex below, this picks the most recently pushed
+        # `main-<sha>` regardless of dictionary order on the SHA.
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,8}$'
+        platform: linux/amd64
+        discoveryLimit: 20

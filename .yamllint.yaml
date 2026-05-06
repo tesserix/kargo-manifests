@@ -1,0 +1,31 @@
+---
+extends: default
+
+# Kargo / ArgoCD CRDs are wide; relax line-length and indent-on-arrays
+# from the very strict yamllint defaults so engineers spend their attention
+# on the resource semantics, not on the linter.
+
+rules:
+  line-length:
+    max: 160
+    level: warning
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+  indentation:
+    indent-sequences: consistent
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: disable
+  document-start: disable
+  truthy:
+    # k8s manifests use "on:" / "yes" / "no" — block-truthy noise
+    allowed-values: ["true", "false"]
+    check-keys: false
+  braces:
+    max-spaces-inside: 1
+  brackets:
+    max-spaces-inside: 1
+
+ignore: |
+  charts/
+  .github/

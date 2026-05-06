@@ -1,0 +1,13 @@
+---
+# Example only — NOT picked up by the kargo-projects ApplicationSet, since
+# this lives under docs/examples/ rather than projects/. Copy this whole
+# directory tree to projects/<your-product>/ and edit.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: sample-product
+  annotations:
+    kargo.akuity.io/description: |
+      Example Kargo Project. Owns the kargo-sample-product namespace.
+spec:
+  promotionPolicies: []

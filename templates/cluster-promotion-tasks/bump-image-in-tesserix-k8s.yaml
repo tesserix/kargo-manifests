@@ -1,0 +1,92 @@
+---
+# ClusterPromotionTask: standard "bump <service> image tag in tesserix-k8s,
+# commit, push, ask Argo CD to refresh".
+#
+# Used by Stage promotionTemplates across multiple Kargo Projects so the
+# git-bump logic stays in one place. Reference it from a Stage like:
+#
+#   spec:
+#     promotionTemplate:
+#       spec:
+#         vars:
+#           - name: service           # the service-name segment in charts/apps/<service>/
+#             value: homechef-api
+#           - name: imageRepo         # ghcr.io/tesserix/<service> typically
+#             value: ghcr.io/tesserix/homechef-api
+#           - name: valuesPath        # which values file to mutate
+#             value: charts/apps/homechef-api/values-prod.yaml
+#           - name: argocdAppName     # Argo CD Application that watches charts/apps/<service>
+#             value: homechef-api
+#         steps:
+#           - uses: bump-image-in-tesserix-k8s
+#
+# Why ClusterPromotionTask not PromotionTask:
+#   - Reusable across every Kargo Project (homechef, mark8ly, devai, etc.).
+#   - Lives in `kargo` namespace alongside the controller; one source of truth.
+#
+# Credentials this task assumes are already in place:
+#   - A Secret in the calling Project's namespace, labeled
+#     `kargo.akuity.io/cred-type: git`, with a username + password (or token)
+#     that has push access to https://github.com/tesserix/tesserix-k8s.git.
+#     Provisioned via ExternalSecrets from GCP Secret Manager.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ClusterPromotionTask
+metadata:
+  name: bump-image-in-tesserix-k8s
+spec:
+  vars:
+    - name: service
+    - name: imageRepo
+    - name: valuesPath
+    - name: argocdAppName
+    - name: argocdAppNamespace
+      value: argocd
+    - name: targetRepo
+      value: https://github.com/tesserix/tesserix-k8s.git
+    - name: targetBranch
+      value: main
+    - name: commitTrailer
+      value: ""
+
+  steps:
+    - uses: git-clone
+      config:
+        repoURL: ${{ vars.targetRepo }}
+        checkout:
+          - branch: ${{ vars.targetBranch }}
+            path: ./repo
+
+    - uses: yaml-update
+      as: update-image-tag
+      config:
+        path: ./repo/${{ vars.valuesPath }}
+        updates:
+          - key: image.tag
+            value: ${{ imageFrom(vars.imageRepo).Tag }}
+
+    - uses: git-commit
+      as: commit
+      config:
+        path: ./repo
+        messageFromSteps:
+          - update-image-tag
+        # Conventional-Commits-style line; the hook in tesserix-k8s
+        # accepts these.
+        message: |
+          chore(${{ vars.service }}): promote image to ${{ imageFrom(vars.imageRepo).Tag }}
+
+          ${{ vars.commitTrailer }}
+
+    - uses: git-push
+      config:
+        path: ./repo
+        targetBranch: ${{ vars.targetBranch }}
+
+    - uses: argocd-update
+      config:
+        apps:
+          - name: ${{ vars.argocdAppName }}
+            namespace: ${{ vars.argocdAppNamespace }}
+            sources:
+              - repoURL: ${{ vars.targetRepo }}
+                desiredRevision: ${{ outputs.commit.commit }}

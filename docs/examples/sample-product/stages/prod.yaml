@@ -1,0 +1,41 @@
+---
+# prod: takes Freight from staging, but does NOT auto-promote.
+# A human kicks the promotion (UI button or `kargo promote`) once
+# they're satisfied with staging. Add a verification block below if
+# you want a smoke test before the human gate.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: prod
+  annotations:
+    kargo.akuity.io/color: '#EE4E4E'
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: sample-service
+      sources:
+        stages:
+          - staging
+  promotionTemplate:
+    spec:
+      vars:
+        - name: service
+          value: sample-service
+        - name: imageRepo
+          value: ghcr.io/tesserix/sample-service
+        - name: valuesPath
+          value: charts/apps/sample-service/values-prod.yaml
+        - name: argocdAppName
+          value: sample-service
+      steps:
+        - task:
+            kind: ClusterPromotionTask
+            name: bump-image-in-tesserix-k8s
+  # Example verification — runs after the Promotion completes and
+  # gates whether the Freight is marked Verified in this Stage.
+  # Uncomment + point at an AnalysisTemplate when you've wired one up.
+  #
+  # verification:
+  #   analysisTemplates:
+  #     - name: smoke-test

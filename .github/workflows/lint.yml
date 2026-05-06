@@ -1,0 +1,141 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.yaml"
+      - "**.yml"
+      - ".github/workflows/lint.yml"
+      - ".yamllint.yaml"
+  pull_request:
+    paths:
+      - "**.yaml"
+      - "**.yml"
+      - ".github/workflows/lint.yml"
+      - ".yamllint.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  KARGO_VERSION: "1.9.8"
+  KUBECONFORM_VERSION: "v0.6.7"
+
+jobs:
+  yamllint:
+    name: yamllint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run yamllint
+        run: |
+          pip install --quiet yamllint==1.35.1
+          yamllint -c .yamllint.yaml .
+
+  kubeconform:
+    name: kubeconform (Kargo + Argo CD CRDs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kubeconform
+        run: |
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${{ env.KUBECONFORM_VERSION }}/kubeconform-linux-amd64.tar.gz" \
+            | tar -xz -C /tmp
+          sudo install -m 0755 /tmp/kubeconform /usr/local/bin/kubeconform
+          kubeconform -v
+
+      - name: Cache CRDs
+        id: cache-crds
+        uses: actions/cache@v4
+        with:
+          path: .crds
+          key: crds-kargo-${{ env.KARGO_VERSION }}-argocd-v2.13.4
+
+      - name: Pull Kargo + Argo CD CRDs
+        if: steps.cache-crds.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .crds
+          # Kargo CRDs (Project, Warehouse, Stage, Promotion, Freight, PromotionTask, ClusterPromotionTask)
+          curl -fsSL "https://raw.githubusercontent.com/akuity/kargo/v${{ env.KARGO_VERSION }}/charts/kargo/resources/crds/kargo-crds.yaml" \
+            -o .crds/kargo-crds.yaml
+          # Argo CD CRDs (Application, ApplicationSet, AppProject) — only used by the argocd/ dir
+          curl -fsSL "https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.4/manifests/crds/application-crd.yaml" \
+            -o .crds/argocd-application-crd.yaml
+          curl -fsSL "https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.4/manifests/crds/applicationset-crd.yaml" \
+            -o .crds/argocd-applicationset-crd.yaml
+          curl -fsSL "https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.4/manifests/crds/appproject-crd.yaml" \
+            -o .crds/argocd-appproject-crd.yaml
+
+      - name: Validate YAML against CRD schemas
+        run: |
+          set -euo pipefail
+          # kubeconform takes one or more --schema-location flags. We point at:
+          #  1. the standard kubernetes-json-schema repo (built-in)
+          #  2. our locally-cached CRDs (rendered into JSON-Schema by kubeconform on the fly)
+          find projects templates -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 \
+            | xargs -0 -r kubeconform \
+                -strict \
+                -summary \
+                -ignore-missing-schemas \
+                -schema-location default \
+                -schema-location '{{ .ResourceKind }}{{ .KindSuffix }}.json' \
+                -schema-location '.crds/kargo-crds.yaml' \
+                -schema-location '.crds/argocd-application-crd.yaml' \
+                -schema-location '.crds/argocd-applicationset-crd.yaml' \
+                -schema-location '.crds/argocd-appproject-crd.yaml'
+
+          # Argo CD ApplicationSet under argocd/ is validated separately because we want
+          # to be strict about it but tolerate {{ .Values }}-style placeholders.
+          find argocd -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 \
+            | xargs -0 -r kubeconform \
+                -strict \
+                -summary \
+                -ignore-missing-schemas \
+                -schema-location default \
+                -schema-location '.crds/argocd-applicationset-crd.yaml' \
+                -schema-location '.crds/argocd-application-crd.yaml'
+
+  kargo-render:
+    name: argocd manifest render dry-run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sanity-check that every projects/<name> directory has a project.yaml
+        run: |
+          set -euo pipefail
+          fail=0
+          for d in projects/*/; do
+            [ -d "$d" ] || continue
+            name=$(basename "$d")
+            if [ ! -f "${d}project.yaml" ]; then
+              echo "::error file=${d}::missing project.yaml — every project directory must define a Project resource"
+              fail=1
+            fi
+            if [ -d "${d}warehouses" ]; then
+              for f in "${d}warehouses"/*.yaml; do
+                [ -e "$f" ] || continue
+                grep -q "kind: Warehouse" "$f" || {
+                  echo "::error file=$f::expected 'kind: Warehouse' in $f"
+                  fail=1
+                }
+              done
+            fi
+            if [ -d "${d}stages" ]; then
+              for f in "${d}stages"/*.yaml; do
+                [ -e "$f" ] || continue
+                grep -q "kind: Stage" "$f" || {
+                  echo "::error file=$f::expected 'kind: Stage' in $f"
+                  fail=1
+                }
+              done
+            fi
+          done
+          exit $fail
