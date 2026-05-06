@@ -25,3 +25,16 @@ spec:
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
+    # Track tesserix-k8s commits that touch this product's Helm chart
+    # / values / ArgoCD Application YAML. Kargo emits a Freight on
+    # every matching commit, the Stage promotes it, and ArgoCD's
+    # auto-sync picks up the actual deploy. Kargo provides the audit
+    # trail (which tesserix-k8s commit got promoted to prod, when).
+    - git:
+        repoURL: https://github.com/tesserix/tesserix-k8s.git
+        branch: main
+        includePaths:
+          - charts/apps/scrapper-.*
+          - charts/apps/postsocial.*
+          - argocd/prod/apps/ai-apps/scrapper-.*
+          - argocd/prod/apps/ai-apps/postsocial.*
