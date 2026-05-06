@@ -12,19 +12,22 @@ under `argocd/prod/infrastructure/kargo.yaml` and the
 This repo only contributes *what* gets promoted, not the platform that
 runs it.
 
-## Phase 1 status
+## Project status
 
 | Project | State | Tag pattern | Strategy | Notes |
 |---|---|---|---|---|
-| `kargo-fanzone` | ✅ live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 23 services, multi-arch OCI images, `platform: linux/amd64` |
-| `kargo-mark8ly` | ✅ live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `Lexical` | 8 Apps from 7 image repos, single-arch Docker v2 manifests, no platform filter |
+| `kargo-fanzone` | live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 23 services, multi-arch OCI images, `platform: linux/amd64` |
+| `kargo-mark8ly` | live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 8 Apps from 7 image repos, single-arch Docker v2 manifests, no platform filter |
+| `kargo-homechef` | live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 5 Apps (api + 4 portals), multi-arch OCI images, `platform: linux/amd64`. Shared `tesseract-nexus/global-services/auth-bff` image is out of scope here — it's used by DevAI too and will land under a separate `kargo-shared-services` Project. |
 
-Phase 2 candidates (not yet onboarded): `homechef`, `devai`, `gameverse`,
-`tesserix-blog`, `social`, `scrapper`, `stockpilot`, `bookkeeping`,
-`guardix`. Pattern is the same as fanzone/mark8ly — see
+Phase 2 remaining: `bookkeeping`, `gameverse` (Rust — needs runbook
+addendum), `social`, `scrapper`, `stockpilot`, `tesserix-blog`,
+`devai`, `guardix`. The shared `auth-bff` image used by HomeChef +
+DevAI also needs its own Project (`kargo-shared-services`). Pattern
+is the same as fanzone/mark8ly/homechef — see
 [`docs/adding-a-project.md`](docs/adding-a-project.md) for the
 runbook and [`docs/phase-1-retrospective.md`](docs/phase-1-retrospective.md)
-for the 13 gotchas to avoid.
+for the gotchas to avoid.
 
 ## Layout
 
