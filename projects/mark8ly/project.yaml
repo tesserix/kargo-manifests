@@ -9,7 +9,10 @@ metadata:
   labels:
     app.kubernetes.io/part-of: tesseract-platform
     app.kubernetes.io/component: release
-    kargo.akuity.io/project: kargo-mark8ly
+    # Per Kargo source (api/v1alpha1/labels.go LabelValueTrue), this
+    # label's value MUST be the literal string "true", not the project
+    # name.
+    kargo.akuity.io/project: "true"
 ---
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Project
