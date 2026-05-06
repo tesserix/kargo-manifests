@@ -146,23 +146,103 @@ mirror — so `imageFrom("ghcr.io/...")` is what to use, not the GAR
 mirror URL. The repo URL in the chart values is independent; only
 the **tag** is updated by argocd-update.
 
-### 7. kargo-controller HTTP/2 + GHCR token endpoint timeout
-The Kargo controller container periodically times out reaching
-`https://ghcr.io/token?...` on this cluster, even though plain
-`curl` from a sibling pod with the same SA in the same namespace
-hits ghcr.io in 0.3s. Symptom in the Warehouse status:
-`dial tcp 20.207.73.86:443: i/o timeout`.
+### 7. Watch GAR mirror, NOT ghcr.io directly
+**Cost + reliability win.** Every Warehouse poll lists tags + fetches
+manifests for each artifact. Pointing at `ghcr.io/...` means each call
+goes out through Cloud NAT to GHCR's edge — that's $0.045/GB billed,
+and we hit a non-deterministic `dial tcp ... i/o timeout` from the
+kargo-controller pod (likely an HTTP/2 + Cloud-NAT-keepalive
+interaction; same network from a sibling curl pod completed in 0.3s).
 
-Workaround: disable Go's HTTP/2 client in the controller deployment.
+Pointing at the in-region GAR remote-repo mirror solves both:
 
-```bash
-kubectl -n kargo set env deploy/kargo-controller GODEBUG=http2client=0
+```yaml
+subscriptions:
+  - image:
+      repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/<service>
+      imageSelectionStrategy: NewestBuild
+      allowTags: '^main-[a-f0-9]{7,8}$'
+      platform: linux/amd64
+      discoveryLimit: 5
 ```
 
-(Add to a Helm-values overlay later so it survives upstream chart
-upgrades. Open issue: figure out the root cause — likely an HTTP/2
-connection-reuse interaction between go-containerregistry and
-Cloud NAT keepalives.)
+- Same tag — GAR caches GHCR transparently.
+- In-region traffic = no NAT data-processing cost.
+- `imageFrom("asia-south1-docker.pkg.dev/.../<svc>").Tag` returns just
+  the tag string, so the chart's `image.repository` (which already
+  points at GAR) doesn't need to change.
+
+Auth: don't bother creating a `kargo.akuity.io/cred-type=image`
+Secret per project — instead bind the kargo-controller K8s SA to a
+GCP SA via Workload Identity once, cluster-wide:
+
+```bash
+PROJECT=tesseracthub-480811
+gcloud iam service-accounts create kargo-controller --project=$PROJECT
+gcloud artifacts repositories add-iam-policy-binding ghcr-remote \
+  --project=$PROJECT --location=asia-south1 \
+  --member="serviceAccount:kargo-controller@$PROJECT.iam.gserviceaccount.com" \
+  --role=roles/artifactregistry.reader
+gcloud iam service-accounts add-iam-policy-binding \
+  "kargo-controller@$PROJECT.iam.gserviceaccount.com" --project=$PROJECT \
+  --member="serviceAccount:$PROJECT.svc.id.goog[kargo/kargo-controller]" \
+  --role=roles/iam.workloadIdentityUser
+```
+
+…and annotate the K8s SA via the kargo Helm values:
+
+```yaml
+controller:
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: kargo-controller@tesseracthub-480811.iam.gserviceaccount.com
+```
+
+Kargo's `gar/workload_identity_federation.go` auto-detects GCE and uses
+ADC for any `*.pkg.dev` host. No Secret needed.
+
+### 8. Don't blow the GAR upstream-fetch quota
+`artifactregistry.googleapis.com` enforces a per-host-per-minute
+upstream-fetch quota (default ~60 req/min) for **remote repositories**.
+On the first Warehouse poll, every uncached tag triggers GAR to fetch
+its manifest from GHCR. With 23 fanzone subscriptions × `discoveryLimit:
+20`, that's 460 cold-cache fetches in seconds — instant
+`TOOMANYREQUESTS`.
+
+Set `discoveryLimit: 5` (you only ever promote the newest tag with
+`NewestBuild`, so 5 is plenty) and `interval: 300s` (the default 60s
+hammers GAR for no benefit when the source rarely changes more than
+once every few minutes). Once GAR has the manifests cached, future
+polls are free.
+
+```yaml
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s              # was 60s — 5× quota relief
+  subscriptions:
+    - image:
+        ...
+        discoveryLimit: 5     # was 20 — 4× quota relief
+```
+
+### 9. ArgoCD chokes on Deployment.status.terminatingReplicas
+Kubernetes 1.31+ adds `Deployment.status.terminatingReplicas`.
+ArgoCD's vendored OpenAPI schema doesn't know about it, so the
+structured-merge diff fails on every sync of any chart that contains
+a Deployment with active terminating replicas, with:
+`error building typed value from live resource: .status.terminatingReplicas: field not declared in schema`.
+
+Fix: drop the entire `status` subtree from the diff in the affected
+Application's `ignoreDifferences` block. Status is owned by
+controllers anyway.
+
+```yaml
+ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+      - /status
+```
 
 ## Architecture as deployed
 
