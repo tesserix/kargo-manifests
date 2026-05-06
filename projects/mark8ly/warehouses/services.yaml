@@ -28,47 +28,40 @@ spec:
         imageSelectionStrategy: Lexical
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
-        platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-auth-bff
         imageSelectionStrategy: Lexical
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
-        platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-marketplace-api
         imageSelectionStrategy: Lexical
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
-        platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-onboarding
         imageSelectionStrategy: Lexical
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
-        platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-otto
         imageSelectionStrategy: Lexical
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
-        platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-platform-api
         imageSelectionStrategy: Lexical
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
-        platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-storefront
         imageSelectionStrategy: Lexical
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
-        platform: linux/amd64
         discoveryLimit: 5
