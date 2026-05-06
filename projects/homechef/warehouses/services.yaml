@@ -1,0 +1,67 @@
+---
+# HomeChef's CI builds every service from the same monorepo. Each
+# image gets a `:main-<sha7>` tag on every push to main. We model the
+# whole product as a SINGLE Warehouse with one image subscription per
+# service — Kargo emits one Freight when ANY subscription sees a new
+# tag, and that Freight references the latest tags across every
+# service. The prod Stage promotes them as one bundle.
+#
+# Manifest type:
+#   All five HomeChef images are built as multi-arch OCI image indexes
+#   (linux/amd64 only today, but the index format makes that explicit).
+#   That means the `platform: linux/amd64` filter is REQUIRED — without
+#   it, NewestBuild can't pick a per-arch config blob and every tag is
+#   silently filtered (gotcha #10 from the Phase-1 retrospective).
+#   `curl -H 'Accept: application/vnd.oci.image.index.v1+json' \
+#     https://asia-south1-docker.pkg.dev/v2/.../homechef-api/manifests/main-<sha>`
+#   returns mediaType=application/vnd.oci.image.index.v1+json; if that
+#   ever flips to manifest.v2+json (a regular single-arch Docker
+#   manifest), drop the platform filter on the affected subscription.
+#
+# `homechef-auth-bff` is intentionally NOT subscribed here: it pulls a
+# shared image from `tesseract-nexus/global-services/auth-bff`, which
+# also serves DevAI and other future products. It will live under a
+# separate `kargo-shared-services` Project.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s
+  subscriptions:
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-api
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-web
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-admin-portal
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-vendor-portal
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-delivery-portal
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5

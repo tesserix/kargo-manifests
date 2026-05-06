@@ -1,0 +1,39 @@
+---
+# Kargo enforces: Project.metadata.name == namespace name. So the
+# Project is called `kargo-homechef` to match the kargo-homechef
+# namespace pre-created here.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-homechef
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    # Per Kargo source (api/v1alpha1/labels.go LabelValueTrue), this
+    # label's value MUST be the literal string "true", not the project
+    # name.
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-homechef
+  annotations:
+    kargo.akuity.io/description: |
+      HomeChef food-delivery platform (fe3dr.com).
+      One-env (prod) deploy: image bumps land directly into the
+      `homechef` namespace via Argo CD Applications already running
+      under the `homechef` AppProject.
+      The shared `tesseract-nexus/global-services/auth-bff` image is
+      OUT of scope here — that's a cross-product image that will be
+      onboarded separately under a `kargo-shared-services` Project.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-homechef
+  namespace: kargo-homechef
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
