@@ -19,12 +19,14 @@ runs it.
 | `kargo-fanzone` | live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 23 services, multi-arch OCI images, `platform: linux/amd64` |
 | `kargo-mark8ly` | live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 8 Apps from 7 image repos, single-arch Docker v2 manifests, no platform filter |
 | `kargo-homechef` | live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 5 Apps (api + 4 portals), multi-arch OCI images, `platform: linux/amd64`. Shared `tesseract-nexus/global-services/auth-bff` image is out of scope here — it's used by DevAI too and will land under a separate `kargo-shared-services` Project. |
+| `kargo-tesserix-blog` | live, auto-promoting | `^main-[a-f0-9]{7,12}$` | `NewestBuild` | 1 App (tesserix-blog Next.js), single-arch Docker v2 manifest, no `platform:` filter. MongoDB sidecar (`mongo:7.0`) deliberately not subscribed (third-party image, no CI). |
 
-Phase 2 remaining: `bookkeeping`, `gameverse` (Rust — needs runbook
-addendum), `social`, `scrapper`, `stockpilot`, `tesserix-blog`,
-`devai`, `guardix`. The shared `auth-bff` image used by HomeChef +
-DevAI also needs its own Project (`kargo-shared-services`). Pattern
-is the same as fanzone/mark8ly/homechef — see
+Phase 2 remaining: `gameverse` (Rust — needs runbook addendum),
+`social`, `scrapper`, `stockpilot`, `devai`, `guardix`. The shared
+`auth-bff` image used by HomeChef + DevAI also needs its own Project
+(`kargo-shared-services`). Bookkeeping was removed from the cluster
+on 2026-05-07 (not production-ready). Pattern is the same as
+fanzone/mark8ly/homechef/tesserix-blog — see
 [`docs/adding-a-project.md`](docs/adding-a-project.md) for the
 runbook and [`docs/phase-1-retrospective.md`](docs/phase-1-retrospective.md)
 for the gotchas to avoid.
