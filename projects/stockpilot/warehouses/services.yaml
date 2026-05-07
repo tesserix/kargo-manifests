@@ -53,5 +53,5 @@ spec:
         repoURL: https://github.com/tesserix/tesserix-k8s.git
         branch: main
         includePaths:
-          - charts/apps/stockpilot-*/**
-          - argocd/prod/apps/ai-apps/stockpilot-*.yaml
+          - charts/apps/stockpilot-.*
+          - argocd/prod/apps/ai-apps/stockpilot-.*

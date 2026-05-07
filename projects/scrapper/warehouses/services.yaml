@@ -34,7 +34,7 @@ spec:
         repoURL: https://github.com/tesserix/tesserix-k8s.git
         branch: main
         includePaths:
-          - charts/apps/scrapper-*/**
-          - charts/apps/postsocial*/**
-          - argocd/prod/apps/ai-apps/scrapper-*.yaml
-          - argocd/prod/apps/ai-apps/postsocial*.yaml
+          - charts/apps/scrapper-.*
+          - charts/apps/postsocial.*
+          - argocd/prod/apps/ai-apps/scrapper-.*
+          - argocd/prod/apps/ai-apps/postsocial.*

@@ -33,6 +33,6 @@ spec:
         repoURL: https://github.com/tesserix/tesserix-k8s.git
         branch: main
         includePaths:
-          - charts/apps/gameverse-*/**
-          - argocd/prod/apps/gameverse/**
+          - charts/apps/gameverse-.*
+          - argocd/prod/apps/gameverse/.*
           - argocd/prod/apps/gameverse-app-of-apps.yaml

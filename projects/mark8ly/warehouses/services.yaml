@@ -74,6 +74,6 @@ spec:
         repoURL: https://github.com/tesserix/tesserix-k8s.git
         branch: main
         includePaths:
-          - charts/apps/mark8ly-*/**
-          - argocd/prod/apps/mark8ly/**
+          - charts/apps/mark8ly-.*
+          - argocd/prod/apps/mark8ly/.*
           - argocd/prod/apps/mark8ly-app-of-apps.yaml
