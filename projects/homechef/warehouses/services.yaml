@@ -74,6 +74,6 @@ spec:
         repoURL: https://github.com/tesserix/tesserix-k8s.git
         branch: main
         includePaths:
-          - charts/apps/homechef-.*
-          - argocd/prod/apps/homechef/.*
+          - charts/apps/homechef-*/**
+          - argocd/prod/apps/homechef/**
           - argocd/prod/apps/homechef-app-of-apps.yaml

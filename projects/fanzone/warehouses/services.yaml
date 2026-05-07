@@ -185,7 +185,7 @@ spec:
         repoURL: https://github.com/tesserix/tesserix-k8s.git
         branch: main
         includePaths:
-          - charts/apps/fanzone-.*
-          - charts/apps/sports-data/.*
-          - argocd/prod/apps/fanzone/.*
+          - charts/apps/fanzone-*/**
+          - charts/apps/sports-data/**
+          - argocd/prod/apps/fanzone/**
           - argocd/prod/apps/fanzone-app-of-apps.yaml

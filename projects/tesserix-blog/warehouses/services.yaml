@@ -30,6 +30,6 @@ spec:
         repoURL: https://github.com/tesserix/tesserix-k8s.git
         branch: main
         includePaths:
-          - charts/apps/tesserix-blog/.*
-          - argocd/prod/apps/blog/tesserix-blog\.yaml
+          - charts/apps/tesserix-blog/**
+          - argocd/prod/apps/blog/tesserix-blog.yaml
           - argocd/prod/apps/blog-app-of-apps.yaml
