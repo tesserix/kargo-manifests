@@ -4,6 +4,24 @@
 # so only TWO unique image subscriptions are needed.
 # Both are multi-arch OCI image indexes, so `platform: linux/amd64`
 # is REQUIRED (gotcha #10).
+#
+# KNOWN BUG / TODO — `imageSelectionStrategy: NewestBuild` is unreliable
+# when the registry is the GAR ghcr-remote mirror. The mirror reports a
+# CREATE_TIME per image that gets bumped every time the cluster re-pulls
+# the image (i.e. the *currently-deployed* tag perpetually looks newest).
+# We saw this on 2026-05-06: Kargo created a sequence of freights whose
+# image tags went strictly *backwards* in commit order, ending on
+# api=main-a82935e (May 2 commit) + web=main-cdccb40 (May 3) when main
+# HEAD was main-63e1bc0 (May 6). Auto-promotion has been disabled in
+# project.yaml as the safety brake. Permanent fixes (pick one):
+#   1. Subscribe to ghcr.io directly. ghcr's CREATE_TIME is the original
+#      push time, not pull-cache time. Needs a ghcr PAT in Kargo creds.
+#   2. Add a git subscription on github.com/tesserix/stock-analysis main
+#      and switch the prod stage promotion template to derive image.tag
+#      from `commitFrom(...).ID[0:7]` instead of `imageFrom(...).Tag`.
+#      Requires kargo-controller to have read access to the repo.
+#   3. Tag images with a lexically-sortable build-time prefix
+#      (e.g. main-20260507-63e1bc0) and use Lexical strategy.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Warehouse
 metadata:
