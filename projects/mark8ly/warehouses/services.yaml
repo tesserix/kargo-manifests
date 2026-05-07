@@ -65,6 +65,16 @@ spec:
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
+    # Playwright e2e runner image. Smoke Stage bumps this on the
+    # mark8ly-uat-e2e-tests Argo CD App which recreates a Job that
+    # runs the suite against UAT URLs. Built by the mark8ly tracks
+    # in the playwright-tests repo on push to main.
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-uat-e2e
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5
     # Track tesserix-k8s commits that touch this product's Helm chart
     # / values / ArgoCD Application YAML. Kargo emits a Freight on
     # every matching commit, the Stage promotes it, and ArgoCD's

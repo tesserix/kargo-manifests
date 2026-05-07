@@ -1,22 +1,24 @@
 ---
-# Smoke Stage — placeholder gate between UAT and prod.
+# Smoke Stage — runs the Playwright e2e suite against UAT.
 #
-# Today this stage is a no-op promotion: it accepts any Freight that
-# UAT has finished promoting and immediately marks it as ready to
-# promote downstream. The empty `steps` list makes Kargo treat the
-# Freight as `Verified` without running any actual smoke checks.
+# How this works:
+#   1. The argocd-update step writes a fresh image.tag onto the
+#      `mark8ly-uat-e2e-tests` Argo CD Application in the cluster.
+#   2. Argo CD syncs that Application. The Helm chart it points at
+#      contains a Kubernetes Job annotated `argocd.argoproj.io/hook: Sync`
+#      so each sync recreates the Job with the new image.
+#   3. The Job pulls ghcr.io/tesserix/mark8ly-uat-e2e:<tag> and runs
+#      `npm run test:mark8ly` against
+#        - https://tesserix-store-admin-uat.mark8ly.com
+#        - https://tesserix-store-uat.mark8ly.com
+#      reading credentials from a K8s Secret synced by ESO from the
+#      `prod-mark8ly-uat-playwright-creds` GCP Secret Manager entry.
+#   4. Kargo's argocd-update wait-for-healthy gate succeeds only when
+#      Argo CD reports the App+Job as Healthy (Job exit 0). A failed
+#      Job leaves the Stage Errored and blocks prod auto-promotion.
 #
-# When real smoke tests land, replace the empty `steps` list with an
-# Argo Rollouts AnalysisTemplate run (`uses: analysis`) that:
-#   - hits https://uat.mark8ly.com/api/v1/storefront/health  (200)
-#   - hits https://admin-uat.mark8ly.com/bff/health          (200)
-#   - hits https://onboarding-uat.mark8ly.com/api/health     (200)
-#   - hits otto WebSocket /ws/ping                           (101)
-# and returns Successful only if all probes pass. AnalysisTemplate
-# would live alongside this file in
-#   projects/mark8ly/templates/mark8ly-uat-smoke-analysis.yaml
-# A failed AnalysisRun blocks the prod Stage from picking up the
-# Freight, so a bad image never auto-promotes past UAT.
+# To bypass smoke for an emergency hot-fix, switch prod's `sources` to
+# `direct: true` temporarily and revert after.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
@@ -35,18 +37,28 @@ spec:
           - uat
   promotionTemplate:
     spec:
-      vars: []
+      vars:
+        - name: argocdRepo
+          value: https://github.com/tesserix/tesserix-k8s.git
+        # Image repo for the Playwright runner. Built by the
+        # `build mark8ly-uat-e2e` workflow in
+        # https://github.com/tesserix/playwright-tests on every push
+        # to mark8ly/* — Kargo discovers new tags via the same
+        # Warehouse subscription the rest of the project uses.
+        - name: e2eImageRepo
+          value: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-uat-e2e
       steps:
-        # Placeholder: refresh the mark8ly-uat parent app-of-apps so
-        # the smoke promotion has a real (CRD-valid) step but doesn't
-        # change anything in the cluster. The argocd-update step needs
-        # at least one app entry — we use the parent because (a) it
-        # exists, (b) refreshing it is idempotent, (c) it's the
-        # closest thing we have to a "ping the UAT environment" signal
-        # until real smoke probes land here as `uses: http` or
-        # `uses: verify` calls.
+        # Bump the e2e Job's image.tag → triggers an Argo CD sync →
+        # recreates the Job → Job runs Playwright against UAT →
+        # Kargo waits for App health (= Job success).
         - uses: argocd-update
           config:
             apps:
-              - name: mark8ly-uat
+              - name: mark8ly-uat-e2e-tests
                 namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom(vars.e2eImageRepo).Tag }}
