@@ -21,9 +21,13 @@ metadata:
   annotations:
     kargo.akuity.io/description: |
       mark8ly multi-tenant marketplace platform.
-      One-env (prod) deploy: image bumps land directly into the
-      `mark8ly` namespace via Argo CD Applications already running
-      under the `mark8ly` AppProject.
+      Three-stage cascading promotion:
+        Warehouse -> uat -> smoke -> prod
+      Every new image (or matching tesserix-k8s commit) lands in UAT
+      first, smokes (placeholder no-op today; AnalysisTemplate when
+      real probes ship), then auto-promotes to prod. UAT runs in the
+      mark8ly-uat namespace at admin-uat.mark8ly.com / uat.mark8ly.com /
+      onboarding-uat.mark8ly.com; prod stays in the mark8ly namespace.
 ---
 apiVersion: kargo.akuity.io/v1alpha1
 kind: ProjectConfig
@@ -32,5 +36,12 @@ metadata:
   namespace: kargo-mark8ly
 spec:
   promotionPolicies:
+    # Auto-promote at every step of the chain. Once smoke gets real
+    # tests, a failed AnalysisRun blocks the prod Stage from picking
+    # up the Freight so this stays safe.
+    - stage: uat
+      autoPromotionEnabled: true
+    - stage: smoke
+      autoPromotionEnabled: true
     - stage: prod
       autoPromotionEnabled: true

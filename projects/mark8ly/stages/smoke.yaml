@@ -1,0 +1,52 @@
+---
+# Smoke Stage — placeholder gate between UAT and prod.
+#
+# Today this stage is a no-op promotion: it accepts any Freight that
+# UAT has finished promoting and immediately marks it as ready to
+# promote downstream. The empty `steps` list makes Kargo treat the
+# Freight as `Verified` without running any actual smoke checks.
+#
+# When real smoke tests land, replace the empty `steps` list with an
+# Argo Rollouts AnalysisTemplate run (`uses: analysis`) that:
+#   - hits https://uat.mark8ly.com/api/v1/storefront/health  (200)
+#   - hits https://admin-uat.mark8ly.com/bff/health          (200)
+#   - hits https://onboarding-uat.mark8ly.com/api/health     (200)
+#   - hits otto WebSocket /ws/ping                           (101)
+# and returns Successful only if all probes pass. AnalysisTemplate
+# would live alongside this file in
+#   projects/mark8ly/templates/mark8ly-uat-smoke-analysis.yaml
+# A failed AnalysisRun blocks the prod Stage from picking up the
+# Freight, so a bad image never auto-promotes past UAT.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: smoke
+  annotations:
+    kargo.akuity.io/color: '#F59E0B'   # amber — smoke / staging gate
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: services
+      sources:
+        # Cascade: only Freight that has cleared the `uat` Stage is
+        # eligible to be promoted into smoke.
+        stages:
+          - uat
+  promotionTemplate:
+    spec:
+      vars: []
+      steps:
+        # Placeholder: refresh the mark8ly-uat parent app-of-apps so
+        # the smoke promotion has a real (CRD-valid) step but doesn't
+        # change anything in the cluster. The argocd-update step needs
+        # at least one app entry — we use the parent because (a) it
+        # exists, (b) refreshing it is idempotent, (c) it's the
+        # closest thing we have to a "ping the UAT environment" signal
+        # until real smoke probes land here as `uses: http` or
+        # `uses: verify` calls.
+        - uses: argocd-update
+          config:
+            apps:
+              - name: mark8ly-uat
+                namespace: argocd

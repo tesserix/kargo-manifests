@@ -1,0 +1,130 @@
+---
+# UAT Stage — first stage in the mark8ly auto-promotion pipeline.
+# Subscribes directly to the bundled Warehouse so every new image
+# tag (or matching tesserix-k8s commit) becomes a Freight that
+# auto-promotes onto the eight mark8ly-uat-* Argo CD Applications.
+#
+# Each Argo CD Application has annotation
+#   kargo.akuity.io/authorized-stage: kargo-mark8ly:uat
+# without which Kargo refuses to mutate it.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: uat
+  annotations:
+    kargo.akuity.io/color: '#3B82F6'   # blue — UAT
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: services
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      vars:
+        - name: argocdRepo
+          value: https://github.com/tesserix/tesserix-k8s.git
+
+      steps:
+        # ----- mark8ly-uat-admin -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: mark8ly-uat-admin
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-admin").Tag }}
+
+        # ----- mark8ly-uat-auth-bff -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: mark8ly-uat-auth-bff
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-auth-bff").Tag }}
+
+        # ----- mark8ly-uat-marketplace-api (admin + storefront share image) -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: mark8ly-uat-marketplace-api-admin
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-marketplace-api").Tag }}
+        - uses: argocd-update
+          config:
+            apps:
+              - name: mark8ly-uat-marketplace-api-storefront
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-marketplace-api").Tag }}
+
+        # ----- mark8ly-uat-onboarding -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: mark8ly-uat-onboarding
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-onboarding").Tag }}
+
+        # ----- mark8ly-uat-otto -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: mark8ly-uat-otto
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-otto").Tag }}
+
+        # ----- mark8ly-uat-platform-api -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: mark8ly-uat-platform-api
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-platform-api").Tag }}
+
+        # ----- mark8ly-uat-storefront -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: mark8ly-uat-storefront
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-storefront").Tag }}
