@@ -33,8 +33,26 @@ spec:
     - git:
         repoURL: https://github.com/tesserix/tesserix-k8s.git
         branch: main
+        # Mix of regex-style `.*` (works when Kargo treats includePaths
+        # as Go regex) AND explicit literal yaml file paths (works in
+        # both regex and glob matching modes — guaranteed-match for the
+        # current ArgoCD Apps + chart values files). Other products
+        # (fanzone, gameverse, homechef, etc.) get the literal match
+        # via their `<product>-app-of-apps.yaml` files; scrapper +
+        # stockpilot are nested under ai-apps/ with no per-product
+        # parent so we list each child App directly.
         includePaths:
           - charts/apps/scrapper-.*
           - charts/apps/postsocial.*
           - argocd/prod/apps/ai-apps/scrapper-.*
           - argocd/prod/apps/ai-apps/postsocial.*
+          - argocd/prod/apps/ai-apps/scrapper-api.yaml
+          - argocd/prod/apps/ai-apps/scrapper-mcp.yaml
+          - argocd/prod/apps/ai-apps/scrapper-web.yaml
+          - argocd/prod/apps/ai-apps/scrapper-istio.yaml
+          - argocd/prod/apps/ai-apps/scrapper-postgres.yaml
+          - argocd/prod/apps/ai-apps/scrapper-db-schema-bootstrap.yaml
+          - argocd/prod/apps/ai-apps/scrapper-identity-bootstrap.yaml
+          - argocd/prod/apps/ai-apps/postsocial.yaml
+          - argocd/prod/apps/ai-apps/postsocial-postgres.yaml
+          - argocd/prod/apps/ai-apps/postsocial-redis.yaml

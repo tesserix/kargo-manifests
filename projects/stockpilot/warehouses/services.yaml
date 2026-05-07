@@ -52,6 +52,16 @@ spec:
     - git:
         repoURL: https://github.com/tesserix/tesserix-k8s.git
         branch: main
+        # Mix of regex-style `.*` and explicit literal yaml file paths
+        # — see the same comment block in
+        # `projects/scrapper/warehouses/services.yaml`. Stockpilot
+        # is also nested under ai-apps/ so it needs explicit App paths.
         includePaths:
           - charts/apps/stockpilot-.*
           - argocd/prod/apps/ai-apps/stockpilot-.*
+          - argocd/prod/apps/ai-apps/stockpilot-api.yaml
+          - argocd/prod/apps/ai-apps/stockpilot-web.yaml
+          - argocd/prod/apps/ai-apps/stockpilot-worker.yaml
+          - argocd/prod/apps/ai-apps/stockpilot-istio.yaml
+          - argocd/prod/apps/ai-apps/stockpilot-postgres.yaml
+          - argocd/prod/apps/ai-apps/stockpilot-db-seed.yaml
