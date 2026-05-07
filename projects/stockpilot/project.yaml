@@ -29,16 +29,12 @@ metadata:
   namespace: kargo-stockpilot
 spec:
   promotionPolicies:
-    # Auto-promotion is OFF because the GAR ghcr-remote mirror reports a
-    # CREATE_TIME that gets bumped every time a pod re-pulls an image —
-    # so the currently-deployed tag keeps re-appearing as "newest" under
-    # `imageSelectionStrategy: NewestBuild`. Result: each auto-promotion
-    # regressed to whichever image GAR most-recently re-cached. See the
-    # TODO in warehouses/services.yaml for the full context and the
-    # paths to a permanent fix (subscribe to ghcr.io directly, or add a
-    # git subscription on the source repo).
-    #
-    # While this is `false`, deploy via Kargo UI: pick the freight whose
-    # api/web tags match the commit you want shipped, hit Promote.
+    # Auto-promotion drives prod off the source repo's main branch via
+    # the git subscription in warehouses/services.yaml. The prod Stage
+    # composes `image.tag = main-<commit_sha7>` from the discovered git
+    # commit, sidestepping the GAR ghcr-remote mirror's NewestBuild
+    # cache-poisoning that previously regressed prod backwards. Image
+    # pulls still happen through the GAR mirror — only the tag derivation
+    # source moved from image discovery to git discovery.
     - stage: prod
-      autoPromotionEnabled: false
+      autoPromotionEnabled: true

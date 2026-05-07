@@ -17,6 +17,16 @@ spec:
       vars:
         - name: argocdRepo
           value: https://github.com/tesserix/tesserix-k8s.git
+        # `image.tag` is derived from the source app repo's newest
+        # commit on main, NOT from `imageFrom(...).Tag`. The GAR
+        # ghcr-remote mirror's CREATE_TIME is bumped on every pull, so
+        # NewestBuild image discovery silently regresses (see the
+        # warehouse for the full incident note). The CI workflow tags
+        # every push to main as `main-<sha7>`, so resolving the tag
+        # from the commit ID gives the same image without going
+        # through the broken mirror discovery.
+        - name: imageTag
+          value: main-${{ commitFrom("https://github.com/tesserix/stock-analysis.git").ID[0:7] }}
 
       steps:
         # ----- stockpilot-api -----
@@ -30,7 +40,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/stock-analysis/stockpilot-api").Tag }}
+                          value: ${{ vars.imageTag }}
 
         # ----- stockpilot-worker (same image as stockpilot-api) -----
         - uses: argocd-update
@@ -43,7 +53,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/stock-analysis/stockpilot-api").Tag }}
+                          value: ${{ vars.imageTag }}
 
         # ----- stockpilot-web -----
         - uses: argocd-update
@@ -56,4 +66,4 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/stock-analysis/stockpilot-web").Tag }}
+                          value: ${{ vars.imageTag }}

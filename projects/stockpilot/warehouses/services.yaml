@@ -1,27 +1,32 @@
 ---
 # stockpilot-worker uses the SAME image as stockpilot-api (one Python
-# binary, two K8s deployments — API mode vs background worker mode),
-# so only TWO unique image subscriptions are needed.
-# Both are multi-arch OCI image indexes, so `platform: linux/amd64`
-# is REQUIRED (gotcha #10).
+# binary, two K8s deployments — API mode vs background worker mode).
+# All images are pulled from the GAR ghcr-remote mirror at runtime.
 #
-# KNOWN BUG / TODO — `imageSelectionStrategy: NewestBuild` is unreliable
-# when the registry is the GAR ghcr-remote mirror. The mirror reports a
-# CREATE_TIME per image that gets bumped every time the cluster re-pulls
-# the image (i.e. the *currently-deployed* tag perpetually looks newest).
-# We saw this on 2026-05-06: Kargo created a sequence of freights whose
-# image tags went strictly *backwards* in commit order, ending on
-# api=main-a82935e (May 2 commit) + web=main-cdccb40 (May 3) when main
-# HEAD was main-63e1bc0 (May 6). Auto-promotion has been disabled in
-# project.yaml as the safety brake. Permanent fixes (pick one):
-#   1. Subscribe to ghcr.io directly. ghcr's CREATE_TIME is the original
-#      push time, not pull-cache time. Needs a ghcr PAT in Kargo creds.
-#   2. Add a git subscription on github.com/tesserix/stock-analysis main
-#      and switch the prod stage promotion template to derive image.tag
-#      from `commitFrom(...).ID[0:7]` instead of `imageFrom(...).Tag`.
-#      Requires kargo-controller to have read access to the repo.
-#   3. Tag images with a lexically-sortable build-time prefix
-#      (e.g. main-20260507-63e1bc0) and use Lexical strategy.
+# Why image SUBSCRIPTIONS are NOT used here:
+# The GAR ghcr-remote mirror bumps each image's CREATE_TIME every time
+# the cluster re-pulls it, so the *currently-deployed* tag perpetually
+# looks "newest" under `imageSelectionStrategy: NewestBuild`. Without a
+# fix, autoPromotion regresses prod backwards (we saw this 2026-05-06:
+# api -> main-a82935e May 2 + web -> main-cdccb40 May 3 while main HEAD
+# was main-63e1bc0). Lexical sort on hex commit SHAs is meaningless;
+# SemVer doesn't apply; Digest is alphabetical-by-digest = arbitrary.
+#
+# What we do INSTEAD:
+# Subscribe to the source app repo's main branch (git, not images).
+# Kargo's NewestFromBranch strategy uses commit-graph order, not
+# registry-cache timestamps, so it is immune to the pull-poisoning bug.
+# Each new commit on tesserix/stock-analysis becomes a Freight whose
+# commitFrom(...).ID[0:7] is then composed into `main-<sha7>` by the
+# prod Stage's promotion template (see ../stages/prod.yaml). The
+# images are still pulled from GAR — only the tag derivation source
+# changed.
+#
+# Image push timing: CI builds and pushes `main-<sha7>` to ghcr.io
+# (mirrored to GAR) typically within ~5 min of the source commit.
+# Kargo's poll interval is 300s, so the worst-case window where Kargo
+# promotes a commit before the image is mirrored is one poll cycle —
+# pods retry ImagePullBackOff and recover automatically.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Warehouse
 metadata:
@@ -30,25 +35,21 @@ spec:
   freightCreationPolicy: Automatic
   interval: 300s
   subscriptions:
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/stock-analysis/stockpilot-api
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        platform: linux/amd64
-        discoveryLimit: 5
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/stock-analysis/stockpilot-web
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        platform: linux/amd64
-        discoveryLimit: 5
+    # Authoritative trigger: every new commit on tesserix/stock-analysis
+    # main becomes a Freight. Promotion derives image.tag from the
+    # commit ID — the GAR mirror's CREATE_TIME is bypassed entirely.
+    - git:
+        repoURL: https://github.com/tesserix/stock-analysis.git
+        branch: main
+        commitSelectionStrategy: NewestFromBranch
+        discoveryLimit: 20
+
     # Track tesserix-k8s commits that touch this product's Helm chart
     # / values / ArgoCD Application YAML. Kargo emits a Freight on
-    # every matching commit, the Stage promotes it, and ArgoCD's
-    # auto-sync picks up the actual deploy. Kargo provides the audit
-    # trail (which tesserix-k8s commit got promoted to prod, when).
+    # every matching commit; the Stage's promotion still derives
+    # image.tag from the stock-analysis commit (above), so this
+    # subscription is purely the audit trail / re-deploy trigger when
+    # only chart changes (not app code) have shipped.
     - git:
         repoURL: https://github.com/tesserix/tesserix-k8s.git
         branch: main
