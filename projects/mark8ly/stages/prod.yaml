@@ -1,8 +1,11 @@
 ---
-# Single prod Stage — auto-promotes Freight from the bundled Warehouse
-# straight onto every mark8ly Argo CD Application, in lock-step.
+# Final Stage in the cascade: uat -> smoke -> prod.
 #
-# Each Argo CD Application has annotation
+# Only Freight that has cleared the upstream `smoke` Stage is eligible
+# for prod promotion. To bypass the chain for an emergency hot-fix,
+# temporarily switch `sources` to `direct: true`, promote, then revert.
+#
+# Each prod Argo CD Application has annotation
 #   kargo.akuity.io/authorized-stage: mark8ly:prod
 # without which Kargo refuses to mutate it.
 #
@@ -25,7 +28,11 @@ spec:
         kind: Warehouse
         name: services
       sources:
-        direct: true
+        # Cascade gate: prod can only consume Freight that has been
+        # promoted to `smoke` (which itself only sees Freight from
+        # `uat`). Linear chain, no parallel Warehouse->prod path.
+        stages:
+          - smoke
   promotionTemplate:
     spec:
       vars:
