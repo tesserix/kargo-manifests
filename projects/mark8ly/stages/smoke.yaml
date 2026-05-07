@@ -51,6 +51,27 @@ spec:
         # Bump the e2e Job's image.tag → triggers an Argo CD sync →
         # recreates the Job → Job runs Playwright against UAT →
         # Kargo waits for App health (= Job success).
+        #
+        # Failure notification path (verified live 2026-05-07):
+        #   1. Test exits non-zero
+        #   2. Job retries up to backoffLimit=2 (3 total attempts)
+        #   3. Job condition flips to type=Failed
+        #   4. Argo CD sync hookPhase=Failed (retry.limit=0 on the App
+        #      so Argo doesn't loop — Kargo learns immediately)
+        #   5. App OperationPhase=Failed
+        #   6. THIS step: argocd-update Errored; Promotion CR
+        #      transitions to phase=Errored with the Argo CD error
+        #      message attached
+        #   7. Stage `smoke` health=Errored
+        #   8. Stage `prod` (sources: [smoke]) sees no eligible Freight
+        #      → no auto-promotion to prod. Kargo UI shows the red X
+        #      on the smoke node + the failing step + the underlying
+        #      Job logs through the Argo CD link.
+        #
+        # No explicit step timeout — Argo CD's retry.limit=0 already
+        # makes the failure short-circuit (single sync attempt). Tests
+        # take 4-6 min on average; let them run to completion rather
+        # than racing a Kargo timeout.
         - uses: argocd-update
           config:
             apps:
