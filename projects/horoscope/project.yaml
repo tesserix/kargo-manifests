@@ -1,0 +1,37 @@
+---
+# Kargo enforces: Project.metadata.name == namespace name. So the
+# Project is called `kargo-horoscope` to match the kargo-horoscope
+# namespace pre-created here.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-horoscope
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    # Per Kargo source (api/v1alpha1/labels.go LabelValueTrue), this
+    # label's value MUST be the literal string "true", not the project
+    # name.
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-horoscope
+  annotations:
+    kargo.akuity.io/description: |
+      Tesserix Horoscope — astrology + Claude vision palm/face readings
+      (astronomy.tesserix.app).
+      One-env (prod) deploy: image bumps land directly into the
+      `horoscope` namespace via Argo CD Applications already running
+      under the `horoscope` AppProject.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-horoscope
+  namespace: kargo-horoscope
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
