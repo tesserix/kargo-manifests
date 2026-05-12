@@ -1,0 +1,43 @@
+---
+# Two image subscriptions (otto, slm-router) — both built by the
+# slm-support-platform repo's CI on every push to main, tagged
+# `main-<sha>`. Plus a git subscription on tesserix-k8s so Kargo emits
+# Freight when the Helm chart, values, or ArgoCD Application for any of
+# the 7 support-platform components changes.
+#
+# Both image subscriptions are multi-arch OCI image indexes, so
+# `platform: linux/amd64` is REQUIRED.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s
+  subscriptions:
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/otto
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/slm-router
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
+    # Watch tesserix-k8s for changes to any support-platform-* chart,
+    # values file, or the ArgoCD Application YAML. Kargo emits a Freight
+    # on every matching commit; the prod Stage auto-promotes it; ArgoCD
+    # picks up the chart change on its next sync.
+    - git:
+        repoURL: https://github.com/tesserix/tesserix-k8s.git
+        branch: main
+        includePaths:
+          - charts/apps/support-platform-.*
+          - argocd/prod/apps/ai-apps/support-platform-.*
+          - external-secrets/prod/support-platform/.*
+          - external-secrets/prod/kargo-support-platform/.*

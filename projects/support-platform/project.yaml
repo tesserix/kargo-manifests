@@ -1,0 +1,40 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-support-platform
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-support-platform
+  annotations:
+    kargo.akuity.io/description: |
+      slm-support-platform — the shared multi-tenant SLM-powered support
+      chatbot (Otto + slm-router + inference + RAG) serving mark8ly,
+      fanzone, and homechef tenants. Two unique images:
+
+        - otto         (services/otto in slm-support-platform repo)
+        - slm-router   (services/slm-router in slm-support-platform repo)
+
+      The other services in the namespace (postgres, mongo, slm-inference,
+      embedder, reranker) ride upstream images and are NOT subscribed
+      here.
+
+      One-env (prod) deploy: image bumps land directly into the
+      `support-platform` namespace via ArgoCD Applications under
+      argocd/prod/apps/ai-apps/.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-support-platform
+  namespace: kargo-support-platform
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
