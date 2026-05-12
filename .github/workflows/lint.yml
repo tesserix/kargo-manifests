@@ -24,6 +24,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   KARGO_VERSION: "1.9.8"
   KUBECONFORM_VERSION: "v0.6.7"
 
