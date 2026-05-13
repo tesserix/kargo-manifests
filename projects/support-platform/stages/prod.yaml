@@ -44,3 +44,61 @@ spec:
                       images:
                         - key: image.tag
                           value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/slm-router").Tag }}
+
+        # ----- mcp-gateway (one image, deployed into six product
+        # namespaces) ----------------------------------------------------
+        # Each product MCP ArgoCD app uses the shared charts/apps/
+        # mcp-gateway chart with a tenant parameter; Kargo sets
+        # image.tag on every one of them so a single CI build rolls
+        # out to all six tenants atomically.
+        - uses: argocd-update
+          config:
+            apps:
+              - name: fanzone-mcp
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/mcp-gateway").Tag }}
+              - name: homechef-mcp
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/mcp-gateway").Tag }}
+              - name: mark8ly-mcp
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/mcp-gateway").Tag }}
+              - name: stockpilot-mcp
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/mcp-gateway").Tag }}
+              - name: horoscope-mcp
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/mcp-gateway").Tag }}
+              - name: gameverse-mcp
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/mcp-gateway").Tag }}

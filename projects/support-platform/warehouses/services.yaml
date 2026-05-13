@@ -1,6 +1,6 @@
 ---
-# Two image subscriptions (otto, slm-router) — both built by the
-# slm-support-platform repo's CI on every push to main, tagged
+# Three image subscriptions (otto, slm-router, mcp-gateway) — all built
+# by the slm-support-platform repo's CI on every push to main, tagged
 # `main-<sha>`.
 #
 # Both image subscriptions are multi-arch OCI image indexes, so
@@ -32,6 +32,17 @@ spec:
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/slm-router
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
+    # Same mcp-gateway image is deployed into every product namespace
+    # (fanzone, homechef, mark8ly, stockpilot, horoscope, gameverse) —
+    # MCP_TENANT env var selects the tool set per pod. One image
+    # subscription, one promotion step per ArgoCD app below.
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/mcp-gateway
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
