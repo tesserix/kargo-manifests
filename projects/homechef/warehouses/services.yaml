@@ -22,6 +22,18 @@
 # shared image from `tesseract-nexus/global-services/auth-bff`, which
 # also serves DevAI and other future products. It will live under a
 # separate `kargo-shared-services` Project.
+#
+# NOTE — git subscription temporarily removed: the cluster-wide
+# tesserix-k8s-git-creds setup for Kargo is incomplete. With an empty
+# git subscription alongside the image subs, Kargo can't form Freight
+# (all subscriptions must yield artifacts). Same workaround as
+# support-platform (commit 636f1ba 2026-05-12). Restore the `git:`
+# block below once the cluster-wide GitHub credential setup lands —
+# chart-only changes in tesserix-k8s still deploy via ArgoCD's own
+# git polling, only the Kargo audit/promotion trail for chart edits
+# is missed in the interim. The CI bump-k8s job in tesserix/Home-Chef-App
+# also writes image.tag directly via the GitHub Contents API, so
+# Kargo's role here is a parallel/audit path, not the only one.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Warehouse
 metadata:
@@ -65,15 +77,12 @@ spec:
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
-    # Track tesserix-k8s commits that touch this product's Helm chart
-    # / values / ArgoCD Application YAML. Kargo emits a Freight on
-    # every matching commit, the Stage promotes it, and ArgoCD's
-    # auto-sync picks up the actual deploy. Kargo provides the audit
-    # trail (which tesserix-k8s commit got promoted to prod, when).
-    - git:
-        repoURL: https://github.com/tesserix/tesserix-k8s.git
-        branch: main
-        includePaths:
-          - charts/apps/homechef-.*
-          - argocd/prod/apps/homechef/.*
-          - argocd/prod/apps/homechef-app-of-apps.yaml
+    # Disabled — see header comment. Restore once cluster-wide
+    # tesserix-k8s-git-creds setup lands. Original block:
+    # - git:
+    #     repoURL: https://github.com/tesserix/tesserix-k8s.git
+    #     branch: main
+    #     includePaths:
+    #       - charts/apps/homechef-.*
+    #       - argocd/prod/apps/homechef/.*
+    #       - argocd/prod/apps/homechef-app-of-apps.yaml
