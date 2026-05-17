@@ -28,14 +28,16 @@ spec:
         kind: Warehouse
         name: services
       sources:
-        # HOT-FIX BYPASS (2026-05-17): smoke has been Errored for 10
-        # days because mark8ly-uat-e2e-tests times out, which blocks
-        # every prod promotion. Switching to direct: true lets prod
-        # consume Freight straight from the Warehouse so the
-        # GIP_WEB_API_KEY_RESOURCE_NAME rollout + the marketplace-api
-        # ScaledObject fix can land. Revert to `stages: [smoke]` once
-        # smoke is healthy again.
-        direct: true
+        # Prod takes Freight from uat only. Smoke is **not** in the
+        # source chain — the e2e harness in smoke is treated as an
+        # informational signal (it was Errored for 10 days behind a
+        # broken e2e job, which had no business blocking prod). When
+        # smoke gains real probes (AnalysisTemplate / AnalysisRun)
+        # gating, add `smoke` back to this list. Prod additionally
+        # requires manual promotion — see project.yaml's
+        # `promotionPolicies` (prod.autoPromotionEnabled: false).
+        stages:
+          - uat
   promotionTemplate:
     spec:
       vars:

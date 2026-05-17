@@ -36,12 +36,16 @@ metadata:
   namespace: kargo-mark8ly
 spec:
   promotionPolicies:
-    # Auto-promote at every step of the chain. Once smoke gets real
-    # tests, a failed AnalysisRun blocks the prod Stage from picking
-    # up the Freight so this stays safe.
+    # Auto-promote through uat + smoke so engineers don't have to
+    # babysit every commit through the lower environments. Prod is
+    # **manual-trigger only** — every prod rollout has to be kicked
+    # off explicitly via the Kargo UI or `kubectl create promotion`
+    # by an authorised operator. The Stage source restricts prod
+    # Freight to what has cleared uat (see stages/prod.yaml), so the
+    # promotion target is also gated.
     - stage: uat
       autoPromotionEnabled: true
     - stage: smoke
       autoPromotionEnabled: true
     - stage: prod
-      autoPromotionEnabled: true
+      autoPromotionEnabled: false
