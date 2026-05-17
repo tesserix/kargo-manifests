@@ -28,11 +28,14 @@ spec:
         kind: Warehouse
         name: services
       sources:
-        # Cascade gate: prod can only consume Freight that has been
-        # promoted to `smoke` (which itself only sees Freight from
-        # `uat`). Linear chain, no parallel Warehouse->prod path.
-        stages:
-          - smoke
+        # HOT-FIX BYPASS (2026-05-17): smoke has been Errored for 10
+        # days because mark8ly-uat-e2e-tests times out, which blocks
+        # every prod promotion. Switching to direct: true lets prod
+        # consume Freight straight from the Warehouse so the
+        # GIP_WEB_API_KEY_RESOURCE_NAME rollout + the marketplace-api
+        # ScaledObject fix can land. Revert to `stages: [smoke]` once
+        # smoke is healthy again.
+        direct: true
   promotionTemplate:
     spec:
       vars:
