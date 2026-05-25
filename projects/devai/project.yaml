@@ -1,0 +1,42 @@
+---
+# Kargo enforces: Project.metadata.name == namespace name. The
+# Project is called `kargo-devai` to match the kargo-devai namespace
+# pre-created here.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-devai
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    # Per Kargo source (api/v1alpha1/labels.go LabelValueTrue), this
+    # label's value MUST be the literal string "true", not the project
+    # name.
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-devai
+  annotations:
+    kargo.akuity.io/description: |
+      DevAI — AI-powered Application Lifecycle Management + SRE monitoring
+      platform. Five GHCR images compose the surface:
+        * devai          — the LangGraph ALM pipeline (FastAPI)
+        * devai-sre      — the SRE autonomous scanner (FastAPI)
+        * devai-dashboard — Next.js ALM dashboard (devai.tesserix.app)
+        * devai-sre-dashboard — Next.js SRE dashboard (sre.tesserix.app)
+        * devai-auth-bff — Go GIP auth + reverse-proxy BFF (kagent +
+          aregistry route through this for SSO).
+      One-env (prod) deploy: image bumps land directly into the `devai`
+      namespace via ArgoCD Applications under the `devai` AppProject.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-devai
+  namespace: kargo-devai
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true

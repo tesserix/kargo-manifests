@@ -1,0 +1,70 @@
+---
+# DevAI ships five images from the same monorepo (tesserix/devai).
+# Each push to main re-tags both `:latest` and `:main-<sha>` on each
+# image. We watch the SHA-stamped tags so promotion freight has a
+# stable, reproducible reference (unlike `:latest` which mutates).
+#
+# Manifest type:
+#   devai + devai-sre are linux/amd64 OCI image indexes (Python
+#   FastAPI services). dashboard, sre-dashboard, and auth-bff are
+#   pushed as multi-arch (linux/amd64-only today). The `platform`
+#   filter is required for image-index manifests — without it the
+#   tag is silently filtered.
+#
+# Subscription form mirrors homechef's `services` warehouse exactly,
+# so promotion logic in prod stage stays grep-replaceable across
+# products.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s
+  subscriptions:
+    # ALM pipeline backend (FastAPI + LangGraph)
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
+
+    # SRE autonomous scanner (FastAPI)
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-sre
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
+
+    # ALM Dashboard (Next.js)
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-dashboard
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
+
+    # SRE Dashboard (Next.js)
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-sre-dashboard
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
+
+    # Auth BFF (Go, GIP-backed). Replaces the previous shared
+    # global-services/auth-bff image. Lives in services/auth-bff/ of
+    # the devai monorepo and is built by .github/workflows/auth-bff-build.yaml.
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-auth-bff
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5

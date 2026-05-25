@@ -1,0 +1,95 @@
+---
+# Single prod Stage — auto-promotes Freight from the `services` Warehouse
+# straight onto every DevAI ArgoCD Application, in lock-step.
+#
+# Each ArgoCD Application gets annotation
+#   kargo.akuity.io/authorized-stage: kargo-devai:prod
+# without which Kargo refuses to mutate it.
+#
+# The `argocd-update` step writes the new `image.tag` into each
+# Application's spec.source.helm.parameters list. ArgoCD's automated
+# sync then rolls the Deployment.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: prod
+  annotations:
+    kargo.akuity.io/color: '#5E35B1'
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: services
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      vars:
+        - name: argocdRepo
+          value: https://github.com/tesserix/tesserix-k8s.git
+
+      steps:
+        # ----- devai (ALM pipeline) -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: devai-api
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai").Tag }}
+
+        # ----- devai-sre (autonomous scanner) -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: devai-sre
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-sre").Tag }}
+
+        # ----- devai-dashboard (ALM UI) -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: devai-dashboard
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-dashboard").Tag }}
+
+        # ----- devai-sre-dashboard (SRE UI) -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: devai-sre-dashboard
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-sre-dashboard").Tag }}
+
+        # ----- devai-auth-bff (GIP auth + reverse-proxy) -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: devai-auth-bff
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-auth-bff").Tag }}
