@@ -79,5 +79,10 @@ spec:
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
-        platform: linux/amd64
+        # NO platform filter here. Unlike the devai images (multi-arch OCI
+        # indexes, where the filter is required), agentic-registry is built as a
+        # single linux/amd64 manifest (image-build.yml: platforms: linux/amd64,
+        # provenance: false). On a single manifest the platform filter matches
+        # nothing -> "No references discovered" -> the warehouse never creates
+        # Freight for it.
         discoveryLimit: 5
