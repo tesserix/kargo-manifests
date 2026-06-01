@@ -93,3 +93,16 @@ spec:
                       images:
                         - key: image.tag
                           value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-auth-bff").Tag }}
+
+        # ----- agentic-registry (our agent catalog, aregistry.tesserix.app) -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: agentic-registry
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/agentic-registry").Tag }}
