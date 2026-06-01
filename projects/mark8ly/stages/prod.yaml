@@ -1,9 +1,12 @@
 ---
-# Final Stage in the cascade: uat -> smoke -> prod.
+# Prod Stage — DELINKED from the UAT track and fully self-automated.
 #
-# Only Freight that has cleared the upstream `smoke` Stage is eligible
-# for prod promotion. To bypass the chain for an emergency hot-fix,
-# temporarily switch `sources` to `direct: true`, promote, then revert.
+# Prod subscribes directly to the bundled Warehouse, so every new image
+# build (main-<sha>) becomes Freight that auto-promotes straight to prod
+# (autoPromotionEnabled: true in project.yaml). The uat -> smoke chain is
+# now an independent, manually-triggered QA track and is no longer a gate
+# on prod. To re-gate prod behind UAT/smoke later, switch `sources` back
+# to `stages: [uat]` (or add `smoke` once it has real probes).
 #
 # Each prod Argo CD Application has annotation
 #   kargo.akuity.io/authorized-stage: mark8ly:prod
@@ -28,16 +31,11 @@ spec:
         kind: Warehouse
         name: services
       sources:
-        # Prod takes Freight from uat only. Smoke is **not** in the
-        # source chain — the e2e harness in smoke is treated as an
-        # informational signal (it was Errored for 10 days behind a
-        # broken e2e job, which had no business blocking prod). When
-        # smoke gains real probes (AnalysisTemplate / AnalysisRun)
-        # gating, add `smoke` back to this list. Prod additionally
-        # requires manual promotion — see project.yaml's
-        # `promotionPolicies` (prod.autoPromotionEnabled: false).
-        stages:
-          - uat
+        # Direct from the Warehouse — prod is NOT sourced from uat/smoke.
+        # Combined with prod.autoPromotionEnabled: true (project.yaml),
+        # every new Freight promotes straight to prod with no lower-env
+        # gate. Switch back to `stages: [uat]` to re-couple prod to UAT.
+        direct: true
   promotionTemplate:
     spec:
       vars:

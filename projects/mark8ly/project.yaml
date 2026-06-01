@@ -21,13 +21,15 @@ metadata:
   annotations:
     kargo.akuity.io/description: |
       mark8ly multi-tenant marketplace platform.
-      Three-stage cascading promotion:
-        Warehouse -> uat -> smoke -> prod
-      Every new image (or matching tesserix-k8s commit) lands in UAT
-      first, smokes (placeholder no-op today; AnalysisTemplate when
-      real probes ship), then auto-promotes to prod. UAT runs in the
-      mark8ly-uat namespace at admin-uat.mark8ly.com / uat.mark8ly.com /
-      onboarding-uat.mark8ly.com; prod stays in the mark8ly namespace.
+      Promotion model (prod delinked from UAT):
+        Warehouse -> prod        (direct, fully auto-promoted)
+        Warehouse -> uat -> smoke (independent, manual QA track)
+      Every new image (or matching tesserix-k8s commit) auto-promotes
+      straight to prod. The uat/smoke track is manually triggered for
+      QA and no longer gates prod. UAT runs in the mark8ly-uat namespace
+      at admin-uat.mark8ly.com / uat.mark8ly.com / onboarding-uat.mark8ly.com
+      (idle at 0 replicas via KEDA scale-to-zero); prod stays in the
+      mark8ly namespace.
 ---
 apiVersion: kargo.akuity.io/v1alpha1
 kind: ProjectConfig
@@ -36,16 +38,17 @@ metadata:
   namespace: kargo-mark8ly
 spec:
   promotionPolicies:
-    # Auto-promote through uat + smoke so engineers don't have to
-    # babysit every commit through the lower environments. Prod is
-    # **manual-trigger only** — every prod rollout has to be kicked
-    # off explicitly via the Kargo UI or `kubectl create promotion`
-    # by an authorised operator. The Stage source restricts prod
-    # Freight to what has cleared uat (see stages/prod.yaml), so the
-    # promotion target is also gated.
-    - stage: uat
+    # Prod is FULLY automated: it sources Freight directly from the
+    # Warehouse (see stages/prod.yaml) and auto-promotes every new
+    # build straight to prod with no lower-env gate.
+    #
+    # UAT is now MANUAL — Freight only enters uat when an operator
+    # triggers it via the Kargo UI or `kubectl create promotion`. Smoke
+    # auto-follows uat so a manual UAT promotion still runs e2e, but the
+    # whole uat -> smoke track is decoupled from prod.
+    - stage: prod
       autoPromotionEnabled: true
+    - stage: uat
+      autoPromotionEnabled: false
     - stage: smoke
       autoPromotionEnabled: true
-    - stage: prod
-      autoPromotionEnabled: false
