@@ -68,3 +68,16 @@ spec:
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
+
+    # Agent Registry (Go) — our own registry serving aregistry.tesserix.app,
+    # replacing the third-party agentregistry-dev deployment. Built from the
+    # separate tesserix/agentic-registry repo (deploy/Dockerfile), not the
+    # devai monorepo, but promoted in lock-step with the DevAI stack since the
+    # BFF / registry-bootstrap / postgres it depends on all live in `devai`.
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/agentic-registry
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
