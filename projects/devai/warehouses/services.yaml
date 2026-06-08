@@ -36,8 +36,13 @@ spec:
     # candidate set.
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
+        # PINNED. NewestBuild orders by the image's created timestamp, which is
+        # unreliable across the GAR pull-through (cache re-touches make a stale
+        # build look newest), so the api repeatedly flapped back to main-1c11a22
+        # and lost the durable-queue + enableServiceLinks fixes. Pin to the exact
+        # tag until image tags are made time-orderable. Bump on every api change.
+        imageSelectionStrategy: Lexical
+        allowTags: '^main-7a09b3e$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 100
