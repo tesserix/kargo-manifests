@@ -42,6 +42,22 @@ spec:
                         - key: image.tag
                           value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai").Tag }}
 
+        # ----- devai-mcp-hub (registry-driven MCP multiplexer) -----
+        # Runs the SAME `devai` image as devai-api, so it tracks the same tag.
+        # Previously omitted here, which left its ArgoCD app pinned to :latest and
+        # drifting stale; wiring it in lock-step with the api keeps them aligned.
+        - uses: argocd-update
+          config:
+            apps:
+              - name: devai-mcp-hub
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai").Tag }}
+
         # ----- devai-sre (autonomous scanner) -----
         - uses: argocd-update
           config:

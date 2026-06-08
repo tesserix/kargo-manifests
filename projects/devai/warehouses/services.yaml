@@ -20,7 +20,10 @@ metadata:
   name: services
 spec:
   freightCreationPolicy: Automatic
-  interval: 300s
+  # DEP-8: Kargo normalizes durations to Go's canonical form (300s -> 5m0s),
+  # so writing 300s here leaves the Warehouse perpetually OutOfSync against the
+  # live object. Use the normalized form to match what the controller stores.
+  interval: 5m0s
   subscriptions:
     # ALM pipeline backend (FastAPI + LangGraph)
     - image:
