@@ -40,7 +40,7 @@ spec:
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
-        discoveryLimit: 200
+        discoveryLimit: 100
 
     # SRE autonomous scanner (FastAPI)
     - image:
@@ -49,7 +49,7 @@ spec:
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
-        discoveryLimit: 200
+        discoveryLimit: 100
 
     # ALM Dashboard (Next.js)
     - image:
@@ -58,7 +58,7 @@ spec:
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
-        discoveryLimit: 200
+        discoveryLimit: 100
 
     # SRE Dashboard (Next.js)
     - image:
@@ -67,7 +67,7 @@ spec:
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
-        discoveryLimit: 200
+        discoveryLimit: 100
 
     # Auth BFF (Go, GIP-backed). Replaces the previous shared
     # global-services/auth-bff image. Lives in services/auth-bff/ of
@@ -78,7 +78,7 @@ spec:
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
-        discoveryLimit: 200
+        discoveryLimit: 100
 
     # Agent Registry (Go) — our own registry serving aregistry.tesserix.app,
     # replacing the third-party agentregistry-dev deployment. Built from the
@@ -96,4 +96,4 @@ spec:
         # provenance: false). On a single manifest the platform filter matches
         # nothing -> "No references discovered" -> the warehouse never creates
         # Freight for it.
-        discoveryLimit: 200
+        discoveryLimit: 100
