@@ -40,7 +40,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("ghcr.io/tesserix/devai/devai").Tag }}
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai").Tag }}
 
         # ----- devai-mcp-hub (registry-driven MCP multiplexer) -----
         # Runs the SAME `devai` image as devai-api, so it tracks the same tag.
@@ -56,7 +56,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("ghcr.io/tesserix/devai/devai").Tag }}
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai").Tag }}
 
         # ----- devai-sre (autonomous scanner) -----
         - uses: argocd-update
