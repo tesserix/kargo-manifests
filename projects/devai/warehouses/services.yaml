@@ -25,14 +25,24 @@ spec:
   # live object. Use the normalized form to match what the controller stores.
   interval: 5m0s
   subscriptions:
-    # ALM pipeline backend (FastAPI + LangGraph)
+    # ALM pipeline backend (FastAPI + LangGraph) — and devai-mcp-hub, which
+    # shares this image.
+    # DISCOVER FROM GHCR, not the GAR pull-through. GAR's tags/list only returns
+    # its lazily-cached subset (a stale ~5-tag 06-04 set), so NewestBuild kept
+    # re-selecting the old main-1c11a22 every cycle and the api flapped off new
+    # builds (and DELETE/route changes 405'd). GHCR lists every tag, so
+    # NewestBuild sees the real newest. Pods still PULL via the GAR pull-through
+    # (chart image.repository), which fetches the chosen tag on demand. Higher
+    # discoveryLimit so the newest build is reliably in the candidate set.
+    # NOTE: relies on devai being a PUBLIC GHCR repo for anonymous discovery;
+    # add a kargo.akuity.io/cred-type=image secret if it goes private.
     - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai
+        repoURL: ghcr.io/tesserix/devai/devai
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
-        discoveryLimit: 5
+        discoveryLimit: 20
 
     # SRE autonomous scanner (FastAPI)
     - image:
