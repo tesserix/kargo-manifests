@@ -35,7 +35,13 @@ spec:
     # pagination that broke image discovery.
     - git:
         repoURL: https://github.com/tesserix/devai.git
-        branch: main
+        # Watch `deploy`, NOT `main`. The `ensure-image-tags` CI job advances
+        # `deploy` to a commit ONLY after every image's main-<sha> tag exists,
+        # so Kargo can never promote a commit before its images are pullable.
+        # Watching `main` directly raced: git-discovery promoted instantly, the
+        # deploy pods pulled a not-yet-existing tag, and the GAR pull-through
+        # negative-cached a 404 that stuck (ImagePullBackOff that never recovered).
+        branch: deploy
         commitSelectionStrategy: NewestFromBranch
         discoveryLimit: 20
 
