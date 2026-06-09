@@ -39,11 +39,14 @@ spec:
         commitSelectionStrategy: NewestFromBranch
         discoveryLimit: 20
 
-    # agentic-registry ships from its own repo (aregistry.tesserix.app). Its
-    # image.tag is derived from THIS repo's newest commit, in lock-step with the
-    # devai stack it depends on (BFF / registry-bootstrap / postgres live in devai).
-    - git:
-        repoURL: https://github.com/tesserix/agentic-registry.git
-        branch: main
-        commitSelectionStrategy: NewestFromBranch
-        discoveryLimit: 20
+    # agentic-registry ships from its own repo (aregistry.tesserix.app, separate
+    # from the devai monorepo). Kept on an IMAGE subscription — Kargo has no git
+    # credentials for that repo, and it has few tags so the registry-tag
+    # pagination that broke the devai images doesn't bite here. Single linux/amd64
+    # manifest, so NO platform filter (it would match nothing on a non-index).
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/agentic-registry
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 100

@@ -34,9 +34,10 @@ spec:
         # auth-bff, runner).
         - name: imageTag
           value: main-${{ commitFrom("https://github.com/tesserix/devai.git").ID[0:7] }}
-        # main-<sha7> from the agentic-registry HEAD commit.
+        # agentic-registry stays on image discovery (separate repo, no Kargo git
+        # creds, few tags) — derive its tag from the discovered image.
         - name: registryTag
-          value: main-${{ commitFrom("https://github.com/tesserix/agentic-registry.git").ID[0:7] }}
+          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/agentic-registry").Tag }}
         # Full GAR ref for the runner image, tag derived from the devai commit,
         # so the K8s Job runner tracks HEAD dynamically (replaces the old static
         # pin in values-prod).
