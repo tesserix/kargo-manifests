@@ -1,104 +1,49 @@
 ---
-# DevAI ships five images from the same monorepo (tesserix/devai).
-# Each push to main re-tags both `:latest` and `:main-<sha>` on each
-# image. We watch the SHA-stamped tags so promotion freight has a
-# stable, reproducible reference (unlike `:latest` which mutates).
+# DevAI ships six images from the tesserix/devai monorepo (devai, devai-sre,
+# devai-dashboard, devai-sre-dashboard, devai-auth-bff, devai-runner) plus
+# agentic-registry from its own repo. All are PULLED at runtime from the GAR
+# ghcr-remote mirror — never ghcr.io directly.
 #
-# Manifest type:
-#   devai + devai-sre are linux/amd64 OCI image indexes (Python
-#   FastAPI services). dashboard, sre-dashboard, and auth-bff are
-#   pushed as multi-arch (linux/amd64-only today). The `platform`
-#   filter is required for image-index manifests — without it the
-#   tag is silently filtered.
+# Why we DISCOVER from git, not from image tags:
+# Image `imageSelectionStrategy: NewestBuild` (and Lexical/Digest) all depend on
+# the registry tag list. Once a repo accrues >100 tags, the registry paginates
+# at 100 in an arbitrary order, so the newest main-<sha> often lands on page 2 —
+# outside Kargo's discoveryLimit (hard-capped at 100). NewestBuild then never
+# sees the newest build and silently promotes the newest of the stale page-1
+# tags, flapping prod backwards (observed 2026-06-09: api stuck on main-1c11a22
+# while HEAD was main-7a09b3e). This is the same class of bug stockpilot/scrapper
+# hit; the fix is identical: subscribe to the git commit graph, which has a true
+# order and no pagination. The prod Stage derives `main-<sha7>` from the commit.
 #
-# Subscription form mirrors homechef's `services` warehouse exactly,
-# so promotion logic in prod stage stays grep-replaceable across
-# products.
+# Path-filtered CI only builds the images whose sources changed, so the devai
+# repo's `ensure-image-tags` workflow tags every image's :latest as main-<sha>
+# on each push — guaranteeing the commit-derived tag resolves for ALL images.
+# Images are still pulled from GAR; only the tag-derivation SOURCE changed.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Warehouse
 metadata:
   name: services
 spec:
   freightCreationPolicy: Automatic
-  # DEP-8: Kargo normalizes durations to Go's canonical form (300s -> 5m0s),
-  # so writing 300s here leaves the Warehouse perpetually OutOfSync against the
-  # live object. Use the normalized form to match what the controller stores.
+  # Kargo normalizes durations to Go's canonical form (300s -> 5m0s); use the
+  # normalized form so the Warehouse doesn't read perpetually OutOfSync.
   interval: 5m0s
   subscriptions:
-    # ALM pipeline backend (FastAPI + LangGraph) — and devai-mcp-hub, which
-    # shares this image.
-    # ALWAYS the in-region GAR pull-through — NEVER ghcr.io directly. Pods must
-    # pull from GAR to avoid GHCR egress cost; GAR mirrors GHCR on demand.
-    # GAR proxies the FULL upstream tag list (~100 tags incl. the newest), but
-    # Kargo only inspects `discoveryLimit` of them for NewestBuild — at 5 it
-    # missed newer builds and devai-api/mcp-hub flapped back to a stale image
-    # (DELETE route 405'd). Raised so the true newest build is always in the
-    # candidate set.
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai
-        # PINNED. NewestBuild orders by the image's created timestamp, which is
-        # unreliable across the GAR pull-through (cache re-touches make a stale
-        # build look newest), so the api repeatedly flapped back to main-1c11a22
-        # and lost the durable-queue + enableServiceLinks fixes. Pin to the exact
-        # tag until image tags are made time-orderable. Bump on every api change.
-        imageSelectionStrategy: Lexical
-        allowTags: '^main-7a09b3e$'
-        strictSemvers: false
-        platform: linux/amd64
-        discoveryLimit: 100
+    # Authoritative trigger: every new commit on tesserix/devai main becomes a
+    # Freight. The prod Stage derives image.tag = main-<commit sha7> for all six
+    # monorepo images. Commit-graph order is immune to the registry tag-list
+    # pagination that broke image discovery.
+    - git:
+        repoURL: https://github.com/tesserix/devai.git
+        branch: main
+        commitSelectionStrategy: NewestFromBranch
+        discoveryLimit: 20
 
-    # SRE autonomous scanner (FastAPI)
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-sre
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        platform: linux/amd64
-        discoveryLimit: 100
-
-    # ALM Dashboard (Next.js)
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-dashboard
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        platform: linux/amd64
-        discoveryLimit: 100
-
-    # SRE Dashboard (Next.js)
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-sre-dashboard
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        platform: linux/amd64
-        discoveryLimit: 100
-
-    # Auth BFF (Go, GIP-backed). Replaces the previous shared
-    # global-services/auth-bff image. Lives in services/auth-bff/ of
-    # the devai monorepo and is built by .github/workflows/auth-bff-build.yaml.
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-auth-bff
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        platform: linux/amd64
-        discoveryLimit: 100
-
-    # Agent Registry (Go) — our own registry serving aregistry.tesserix.app,
-    # replacing the third-party agentregistry-dev deployment. Built from the
-    # separate tesserix/agentic-registry repo (deploy/Dockerfile), not the
-    # devai monorepo, but promoted in lock-step with the DevAI stack since the
-    # BFF / registry-bootstrap / postgres it depends on all live in `devai`.
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/agentic-registry
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        # NO platform filter here. Unlike the devai images (multi-arch OCI
-        # indexes, where the filter is required), agentic-registry is built as a
-        # single linux/amd64 manifest (image-build.yml: platforms: linux/amd64,
-        # provenance: false). On a single manifest the platform filter matches
-        # nothing -> "No references discovered" -> the warehouse never creates
-        # Freight for it.
-        discoveryLimit: 100
+    # agentic-registry ships from its own repo (aregistry.tesserix.app). Its
+    # image.tag is derived from THIS repo's newest commit, in lock-step with the
+    # devai stack it depends on (BFF / registry-bootstrap / postgres live in devai).
+    - git:
+        repoURL: https://github.com/tesserix/agentic-registry.git
+        branch: main
+        commitSelectionStrategy: NewestFromBranch
+        discoveryLimit: 20

@@ -2,13 +2,15 @@
 # Single prod Stage — auto-promotes Freight from the `services` Warehouse
 # straight onto every DevAI ArgoCD Application, in lock-step.
 #
-# Each ArgoCD Application gets annotation
-#   kargo.akuity.io/authorized-stage: kargo-devai:prod
-# without which Kargo refuses to mutate it.
+# image.tag is derived from the source repo's newest commit (NOT imageFrom),
+# because the GAR/ghcr tag list paginates at 100 and broke NewestBuild image
+# discovery (see the warehouse for the incident note). CI tags every push to
+# main as main-<sha7> (and `ensure-image-tags` backfills unchanged images), so
+# resolving the tag from the commit ID yields the same image without the broken
+# registry-tag discovery. Images are still PULLED from GAR (image.repository in
+# each chart's values is the GAR mirror); only the tag SOURCE changed.
 #
-# The `argocd-update` step writes the new `image.tag` into each
-# Application's spec.source.helm.parameters list. ArgoCD's automated
-# sync then rolls the Deployment.
+# Each ArgoCD Application carries kargo.akuity.io/authorized-stage: kargo-devai:prod.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
@@ -27,9 +29,22 @@ spec:
       vars:
         - name: argocdRepo
           value: https://github.com/tesserix/tesserix-k8s.git
+        # main-<sha7> from the tesserix/devai HEAD commit — drives all six
+        # monorepo images (api, mcp-hub, sre, dashboard, sre-dashboard,
+        # auth-bff, runner).
+        - name: imageTag
+          value: main-${{ commitFrom("https://github.com/tesserix/devai.git").ID[0:7] }}
+        # main-<sha7> from the agentic-registry HEAD commit.
+        - name: registryTag
+          value: main-${{ commitFrom("https://github.com/tesserix/agentic-registry.git").ID[0:7] }}
+        # Full GAR ref for the runner image, tag derived from the devai commit,
+        # so the K8s Job runner tracks HEAD dynamically (replaces the old static
+        # pin in values-prod).
+        - name: runnerImage
+          value: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-runner:main-${{ commitFrom("https://github.com/tesserix/devai.git").ID[0:7] }}
 
       steps:
-        # ----- devai (ALM pipeline) -----
+        # ----- devai (ALM pipeline) + its K8s Job runner image -----
         - uses: argocd-update
           config:
             apps:
@@ -40,12 +55,11 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai").Tag }}
+                          value: ${{ vars.imageTag }}
+                        - key: k8sRuntime.runnerImage
+                          value: ${{ vars.runnerImage }}
 
-        # ----- devai-mcp-hub (registry-driven MCP multiplexer) -----
-        # Runs the SAME `devai` image as devai-api, so it tracks the same tag.
-        # Previously omitted here, which left its ArgoCD app pinned to :latest and
-        # drifting stale; wiring it in lock-step with the api keeps them aligned.
+        # ----- devai-mcp-hub (runs the SAME devai image as devai-api) -----
         - uses: argocd-update
           config:
             apps:
@@ -56,7 +70,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai").Tag }}
+                          value: ${{ vars.imageTag }}
 
         # ----- devai-sre (autonomous scanner) -----
         - uses: argocd-update
@@ -69,7 +83,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-sre").Tag }}
+                          value: ${{ vars.imageTag }}
 
         # ----- devai-dashboard (ALM UI) -----
         - uses: argocd-update
@@ -82,7 +96,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-dashboard").Tag }}
+                          value: ${{ vars.imageTag }}
 
         # ----- devai-sre-dashboard (SRE UI) -----
         - uses: argocd-update
@@ -95,7 +109,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-sre-dashboard").Tag }}
+                          value: ${{ vars.imageTag }}
 
         # ----- devai-auth-bff (GIP auth + reverse-proxy) -----
         - uses: argocd-update
@@ -108,9 +122,9 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/devai/devai-auth-bff").Tag }}
+                          value: ${{ vars.imageTag }}
 
-        # ----- agentic-registry (our agent catalog, aregistry.tesserix.app) -----
+        # ----- agentic-registry (aregistry.tesserix.app) -----
         - uses: argocd-update
           config:
             apps:
@@ -121,4 +135,4 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/agentic-registry").Tag }}
+                          value: ${{ vars.registryTag }}
