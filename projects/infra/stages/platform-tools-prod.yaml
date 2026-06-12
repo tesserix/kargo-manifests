@@ -20,6 +20,12 @@ spec:
     spec:
       steps:
         - uses: argocd-update
+          # Mesh/observability rollouts pull fresh images across many
+          # workloads — the 5m default step timeout fires before health
+          # settles. Give promotions room to finish.
+          retry:
+            timeout: 30m
+            errorThreshold: 3
           config:
             apps:
               - name: kargo
