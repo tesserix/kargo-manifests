@@ -1,0 +1,102 @@
+---
+# Self-managing tier: a promotion here can roll Kargo itself and ArgoCD
+# itself. Both tolerate being upgraded by the very sync they trigger —
+# controllers resume reconciliation after restart.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: platform-tools-prod
+  namespace: kargo-infra
+  annotations:
+    kargo.akuity.io/color: '#5AB552'
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: platform-tools
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      steps:
+        - uses: argocd-update
+          config:
+            apps:
+              - name: kargo
+                namespace: argocd
+                sources:
+                  - repoURL: ghcr.io/akuity/kargo-charts
+                    chart: kargo
+                    updateTargetRevision: true
+              - name: keda
+                namespace: argocd
+                sources:
+                  - repoURL: https://kedacore.github.io/charts
+                    chart: keda
+                    updateTargetRevision: true
+              - name: cert-manager
+                namespace: argocd
+                sources:
+                  - repoURL: https://charts.jetstack.io
+                    chart: cert-manager
+                    updateTargetRevision: true
+              - name: argocd
+                namespace: argocd
+                sources:
+                  - repoURL: https://argoproj.github.io/argo-helm
+                    chart: argo-cd
+                    updateTargetRevision: true
+              - name: sealed-secrets
+                namespace: argocd
+                sources:
+                  - repoURL: https://bitnami-labs.github.io/sealed-secrets
+                    chart: sealed-secrets
+                    updateTargetRevision: true
+              - name: reloader
+                namespace: argocd
+                sources:
+                  - repoURL: https://stakater.github.io/stakater-charts
+                    chart: reloader
+                    updateTargetRevision: true
+              - name: external-dns
+                namespace: argocd
+                sources:
+                  - repoURL: https://kubernetes-sigs.github.io/external-dns
+                    chart: external-dns
+                    updateTargetRevision: true
+              - name: arc-controller
+                namespace: argocd
+                sources:
+                  - repoURL: ghcr.io/actions/actions-runner-controller-charts
+                    chart: gha-runner-scale-set-controller
+                    updateTargetRevision: true
+              - name: arc-runner-scale-set
+                namespace: argocd
+                sources:
+                  - repoURL: ghcr.io/actions/actions-runner-controller-charts
+                    chart: gha-runner-scale-set
+                    updateTargetRevision: true
+              - name: agentgateway
+                namespace: argocd
+                sources:
+                  - repoURL: ghcr.io/agentgateway/agentgateway/charts
+                    chart: agentgateway
+                    updateTargetRevision: true
+              - name: agentgateway-crds
+                namespace: argocd
+                sources:
+                  - repoURL: ghcr.io/agentgateway/agentgateway/charts
+                    chart: agentgateway-crds
+                    updateTargetRevision: true
+              - name: kagent
+                namespace: argocd
+                sources:
+                  - repoURL: ghcr.io/kagent-dev/kagent/helm
+                    chart: kagent
+                    updateTargetRevision: true
+              - name: kagent-crds
+                namespace: argocd
+                sources:
+                  - repoURL: ghcr.io/kagent-dev/kagent/helm
+                    chart: kagent-crds
+                    updateTargetRevision: true

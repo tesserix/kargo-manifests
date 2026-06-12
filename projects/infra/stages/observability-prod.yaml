@@ -1,0 +1,63 @@
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: observability-prod
+  namespace: kargo-infra
+  annotations:
+    kargo.akuity.io/color: '#E8A33D'
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: observability
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      steps:
+        - uses: argocd-update
+          config:
+            apps:
+              - name: grafana
+                namespace: argocd
+                sources:
+                  - repoURL: https://grafana.github.io/helm-charts
+                    chart: grafana
+                    updateTargetRevision: true
+              - name: prometheus
+                namespace: argocd
+                sources:
+                  - repoURL: https://prometheus-community.github.io/helm-charts
+                    chart: prometheus
+                    updateTargetRevision: true
+              - name: prometheus-operator-crds
+                namespace: argocd
+                sources:
+                  - repoURL: https://prometheus-community.github.io/helm-charts
+                    chart: prometheus-operator-crds
+                    updateTargetRevision: true
+              - name: fluent-bit
+                namespace: argocd
+                sources:
+                  - repoURL: https://fluent.github.io/helm-charts
+                    chart: fluent-bit
+                    updateTargetRevision: true
+              - name: kiali
+                namespace: argocd
+                sources:
+                  - repoURL: https://kiali.org/helm-charts
+                    chart: kiali-server
+                    updateTargetRevision: true
+              - name: elasticsearch
+                namespace: argocd
+                sources:
+                  - repoURL: https://helm.elastic.co
+                    chart: elasticsearch
+                    updateTargetRevision: true
+              - name: kibana
+                namespace: argocd
+                sources:
+                  - repoURL: https://helm.elastic.co
+                    chart: kibana
+                    updateTargetRevision: true

@@ -1,0 +1,46 @@
+---
+# Kargo enforces: Project.metadata.name == namespace name (see devai
+# project for the original notes on the kargo.akuity.io/project label).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-infra
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-infra
+  annotations:
+    kargo.akuity.io/description: |
+      Cluster infrastructure auto-upgrades. Three warehouses subscribe to
+      the PUBLIC helm chart repositories of every third-party component the
+      cluster runs (istio, observability stack, platform tooling incl.
+      ArgoCD and Kargo themselves). When an upstream publishes a release
+      inside the allowed semver range, the matching stage bumps the ArgoCD
+      Application's targetRevision and the upgrade rolls out — no human in
+      the loop.
+
+      GUARDRAIL: every subscription is semver-constrained to the CURRENT
+      MAJOR (patch-only for istio and 0.x ecosystems). Major upgrades are
+      deliberate human work: widen the constraint in the warehouse AND bump
+      the bootstrap revision in tesserix-k8s argocd/prod/infrastructure/.
+      (The 2026-06-12 ArgoCD 2->3 jump needed RBAC changes; ESO 1.x drops
+      v1beta1 — majors break, ranges protect.)
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-infra
+  namespace: kargo-infra
+spec:
+  promotionPolicies:
+    - stage: istio-prod
+      autoPromotionEnabled: true
+    - stage: observability-prod
+      autoPromotionEnabled: true
+    - stage: platform-tools-prod
+      autoPromotionEnabled: true

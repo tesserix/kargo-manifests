@@ -1,0 +1,36 @@
+---
+# Istio mesh charts — PATCH-ONLY (~1.29). Istio minors are real upgrades
+# with ambient-mode implications (see tesserix-k8s docs + the ambient
+# checklist); bump the range here deliberately when planning 1.30.
+# All mesh components move together in one freight so base/cni/istiod/
+# ztunnel/gateways can never skew. The gateway chart subscription also
+# pulls the two gateways still bootstrapped at 1.24 up to the mesh version.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: istio
+  namespace: kargo-infra
+spec:
+  freightCreationPolicy: Automatic
+  interval: 1h0m0s
+  subscriptions:
+    - chart:
+        repoURL: https://istio-release.storage.googleapis.com/charts
+        name: base
+        semverConstraint: ">=1.29.1 <1.30.0"
+    - chart:
+        repoURL: https://istio-release.storage.googleapis.com/charts
+        name: cni
+        semverConstraint: ">=1.29.1 <1.30.0"
+    - chart:
+        repoURL: https://istio-release.storage.googleapis.com/charts
+        name: istiod
+        semverConstraint: ">=1.29.2 <1.30.0"
+    - chart:
+        repoURL: https://istio-release.storage.googleapis.com/charts
+        name: ztunnel
+        semverConstraint: ">=1.29.1 <1.30.0"
+    - chart:
+        repoURL: https://istio-release.storage.googleapis.com/charts
+        name: gateway
+        semverConstraint: ">=1.29.1 <1.30.0"

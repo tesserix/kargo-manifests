@@ -1,0 +1,42 @@
+---
+# Observability stack — same-major auto-upgrades. The elastic charts are
+# effectively frozen upstream at 8.5.1 (chart line EOL'd), so those
+# subscriptions exist for completeness and will simply never produce
+# freight beyond the current version.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: observability
+  namespace: kargo-infra
+spec:
+  freightCreationPolicy: Automatic
+  interval: 1h0m0s
+  subscriptions:
+    - chart:
+        repoURL: https://grafana.github.io/helm-charts
+        name: grafana
+        semverConstraint: ">=8.5.2 <9.0.0"
+    - chart:
+        repoURL: https://prometheus-community.github.io/helm-charts
+        name: prometheus
+        semverConstraint: ">=25.27.0 <26.0.0"
+    - chart:
+        repoURL: https://prometheus-community.github.io/helm-charts
+        name: prometheus-operator-crds
+        semverConstraint: ">=18.0.1 <19.0.0"
+    - chart:
+        repoURL: https://fluent.github.io/helm-charts
+        name: fluent-bit
+        semverConstraint: ">=0.47.10 <1.0.0"
+    - chart:
+        repoURL: https://kiali.org/helm-charts
+        name: kiali-server
+        semverConstraint: ">=2.1.0 <3.0.0"
+    - chart:
+        repoURL: https://helm.elastic.co
+        name: elasticsearch
+        semverConstraint: ">=8.5.1 <9.0.0"
+    - chart:
+        repoURL: https://helm.elastic.co
+        name: kibana
+        semverConstraint: ">=8.5.1 <9.0.0"

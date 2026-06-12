@@ -1,0 +1,64 @@
+---
+# Platform tooling — same-major auto-upgrades; 0.x ecosystems (kagent, arc)
+# are pinned to their current minor because 0.x minors are semver-breaking.
+# This warehouse makes the platform SELF-MANAGING: it covers Kargo (Kargo
+# upgrades Kargo) and ArgoCD (the argocd Application is self-managed; a
+# promotion here rolls the GitOps control plane itself).
+#
+# external-secrets is deliberately ABSENT: 0.9.x -> 1.x drops the v1beta1
+# API every manifest in tesserix-k8s still uses. Add it after the repo-wide
+# v1 migration.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: platform-tools
+  namespace: kargo-infra
+spec:
+  freightCreationPolicy: Automatic
+  interval: 1h0m0s
+  subscriptions:
+    - chart:
+        repoURL: oci://ghcr.io/akuity/kargo-charts/kargo
+        semverConstraint: ">=1.10.6 <2.0.0"
+    - chart:
+        repoURL: https://kedacore.github.io/charts
+        name: keda
+        semverConstraint: ">=2.20.1 <3.0.0"
+    - chart:
+        repoURL: https://charts.jetstack.io
+        name: cert-manager
+        semverConstraint: ">=1.20.2 <2.0.0"
+    - chart:
+        repoURL: https://argoproj.github.io/argo-helm
+        name: argo-cd
+        semverConstraint: ">=9.5.21 <10.0.0"
+    - chart:
+        repoURL: https://bitnami-labs.github.io/sealed-secrets
+        name: sealed-secrets
+        semverConstraint: ">=2.18.6 <3.0.0"
+    - chart:
+        repoURL: https://stakater.github.io/stakater-charts
+        name: reloader
+        semverConstraint: ">=2.2.12 <3.0.0"
+    - chart:
+        repoURL: https://kubernetes-sigs.github.io/external-dns
+        name: external-dns
+        semverConstraint: ">=1.14.5 <2.0.0"
+    - chart:
+        repoURL: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller
+        semverConstraint: ">=0.13.1 <0.14.0"
+    - chart:
+        repoURL: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
+        semverConstraint: ">=0.13.1 <0.14.0"
+    - chart:
+        repoURL: oci://ghcr.io/agentgateway/agentgateway/charts/agentgateway
+        semverConstraint: ">=1.0.1 <2.0.0"
+    - chart:
+        repoURL: oci://ghcr.io/agentgateway/agentgateway/charts/agentgateway-crds
+        semverConstraint: ">=1.0.1 <2.0.0"
+    - chart:
+        repoURL: oci://ghcr.io/kagent-dev/kagent/helm/kagent
+        semverConstraint: ">=0.9.4 <0.10.0"
+    - chart:
+        repoURL: oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds
+        semverConstraint: ">=0.9.4 <0.10.0"

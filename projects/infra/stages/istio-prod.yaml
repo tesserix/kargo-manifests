@@ -1,0 +1,73 @@
+---
+# Bumps every istio Application's targetRevision to the freight's chart
+# version. All gateway Applications share the `gateway` chart, so one
+# freight aligns the whole mesh (including the two gateways that were
+# bootstrapped at 1.24).
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: istio-prod
+  namespace: kargo-infra
+  annotations:
+    kargo.akuity.io/color: '#476EAE'
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: istio
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      steps:
+        - uses: argocd-update
+          config:
+            apps:
+              - name: istio-base
+                namespace: argocd
+                sources:
+                  - repoURL: https://istio-release.storage.googleapis.com/charts
+                    chart: base
+                    updateTargetRevision: true
+              - name: istio-cni
+                namespace: argocd
+                sources:
+                  - repoURL: https://istio-release.storage.googleapis.com/charts
+                    chart: cni
+                    updateTargetRevision: true
+              - name: istio-istiod
+                namespace: argocd
+                sources:
+                  - repoURL: https://istio-release.storage.googleapis.com/charts
+                    chart: istiod
+                    updateTargetRevision: true
+              - name: istio-ztunnel
+                namespace: argocd
+                sources:
+                  - repoURL: https://istio-release.storage.googleapis.com/charts
+                    chart: ztunnel
+                    updateTargetRevision: true
+              - name: istio-egress-gateway
+                namespace: argocd
+                sources:
+                  - repoURL: https://istio-release.storage.googleapis.com/charts
+                    chart: gateway
+                    updateTargetRevision: true
+              - name: istio-ingress-gateway-internal
+                namespace: argocd
+                sources:
+                  - repoURL: https://istio-release.storage.googleapis.com/charts
+                    chart: gateway
+                    updateTargetRevision: true
+              - name: custom-ingress-gateway
+                namespace: argocd
+                sources:
+                  - repoURL: https://istio-release.storage.googleapis.com/charts
+                    chart: gateway
+                    updateTargetRevision: true
+              - name: homechef-ingress-gateway
+                namespace: argocd
+                sources:
+                  - repoURL: https://istio-release.storage.googleapis.com/charts
+                    chart: gateway
+                    updateTargetRevision: true
