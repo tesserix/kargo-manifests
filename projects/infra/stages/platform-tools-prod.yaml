@@ -1,7 +1,6 @@
 ---
-# Self-managing tier: a promotion here can roll Kargo itself and ArgoCD
-# itself. Both tolerate being upgraded by the very sync they trigger —
-# controllers resume reconciliation after restart.
+# Git write-back upgrades for platform tooling — including Kargo
+# itself and the self-managed ArgoCD.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
@@ -19,10 +18,100 @@ spec:
   promotionTemplate:
     spec:
       steps:
+        - uses: git-clone
+          config:
+            repoURL: https://github.com/tesserix/tesserix-k8s.git
+            checkout:
+              - branch: main
+                path: ./repo
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/kargo.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("oci://ghcr.io/akuity/kargo-charts/kargo").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/keda.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("https://kedacore.github.io/charts", "keda").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/cert-manager.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("https://charts.jetstack.io", "cert-manager").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/argocd.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("https://argoproj.github.io/argo-helm", "argo-cd").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/sealed-secrets.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("https://bitnami-labs.github.io/sealed-secrets", "sealed-secrets").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/reloader.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("https://stakater.github.io/stakater-charts", "reloader").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/external-dns.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("https://kubernetes-sigs.github.io/external-dns", "external-dns").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/arc-controller.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/arc-runner-scale-set.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/agentgateway.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("oci://ghcr.io/agentgateway/agentgateway/charts/agentgateway").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/agentgateway-crds.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("oci://ghcr.io/agentgateway/agentgateway/charts/agentgateway-crds").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/kagent.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("oci://ghcr.io/kagent-dev/kagent/helm/kagent").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/kagent-crds.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds").Version }}
+        - uses: git-commit
+          config:
+            path: ./repo
+            message: "chore(platform-tools): kargo auto-upgrade to current freight"
+        - uses: git-push
+          config:
+            path: ./repo
+        # Trigger immediate syncs and wait for convergence instead of
+        # relying on ArgoCD's poll interval.
         - uses: argocd-update
-          # Mesh/observability rollouts pull fresh images across many
-          # workloads — the 5m default step timeout fires before health
-          # settles. Give promotions room to finish.
           retry:
             timeout: 30m
             errorThreshold: 3
@@ -30,79 +119,27 @@ spec:
             apps:
               - name: kargo
                 namespace: argocd
-                sources:
-                  - repoURL: ghcr.io/akuity/kargo-charts
-                    chart: kargo
-                    desiredRevision: ${{ chartFrom("oci://ghcr.io/akuity/kargo-charts/kargo").Version }}
               - name: keda
                 namespace: argocd
-                sources:
-                  - repoURL: https://kedacore.github.io/charts
-                    chart: keda
-                    desiredRevision: ${{ chartFrom("https://kedacore.github.io/charts", "keda").Version }}
               - name: cert-manager
                 namespace: argocd
-                sources:
-                  - repoURL: https://charts.jetstack.io
-                    chart: cert-manager
-                    desiredRevision: ${{ chartFrom("https://charts.jetstack.io", "cert-manager").Version }}
               - name: argocd
                 namespace: argocd
-                sources:
-                  - repoURL: https://argoproj.github.io/argo-helm
-                    chart: argo-cd
-                    desiredRevision: ${{ chartFrom("https://argoproj.github.io/argo-helm", "argo-cd").Version }}
               - name: sealed-secrets
                 namespace: argocd
-                sources:
-                  - repoURL: https://bitnami-labs.github.io/sealed-secrets
-                    chart: sealed-secrets
-                    desiredRevision: ${{ chartFrom("https://bitnami-labs.github.io/sealed-secrets", "sealed-secrets").Version }}
               - name: reloader
                 namespace: argocd
-                sources:
-                  - repoURL: https://stakater.github.io/stakater-charts
-                    chart: reloader
-                    desiredRevision: ${{ chartFrom("https://stakater.github.io/stakater-charts", "reloader").Version }}
               - name: external-dns
                 namespace: argocd
-                sources:
-                  - repoURL: https://kubernetes-sigs.github.io/external-dns
-                    chart: external-dns
-                    desiredRevision: ${{ chartFrom("https://kubernetes-sigs.github.io/external-dns", "external-dns").Version }}
               - name: arc-controller
                 namespace: argocd
-                sources:
-                  - repoURL: ghcr.io/actions/actions-runner-controller-charts
-                    chart: gha-runner-scale-set-controller
-                    desiredRevision: ${{ chartFrom("oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller").Version }}
               - name: arc-runner-scale-set
                 namespace: argocd
-                sources:
-                  - repoURL: ghcr.io/actions/actions-runner-controller-charts
-                    chart: gha-runner-scale-set
-                    desiredRevision: ${{ chartFrom("oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set").Version }}
               - name: agentgateway
                 namespace: argocd
-                sources:
-                  - repoURL: ghcr.io/agentgateway/agentgateway/charts
-                    chart: agentgateway
-                    desiredRevision: ${{ chartFrom("oci://ghcr.io/agentgateway/agentgateway/charts/agentgateway").Version }}
               - name: agentgateway-crds
                 namespace: argocd
-                sources:
-                  - repoURL: ghcr.io/agentgateway/agentgateway/charts
-                    chart: agentgateway-crds
-                    desiredRevision: ${{ chartFrom("oci://ghcr.io/agentgateway/agentgateway/charts/agentgateway-crds").Version }}
               - name: kagent
                 namespace: argocd
-                sources:
-                  - repoURL: ghcr.io/kagent-dev/kagent/helm
-                    chart: kagent
-                    desiredRevision: ${{ chartFrom("oci://ghcr.io/kagent-dev/kagent/helm/kagent").Version }}
               - name: kagent-crds
                 namespace: argocd
-                sources:
-                  - repoURL: ghcr.io/kagent-dev/kagent/helm
-                    chart: kagent-crds
-                    desiredRevision: ${{ chartFrom("oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds").Version }}

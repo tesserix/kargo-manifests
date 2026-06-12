@@ -1,4 +1,5 @@
 ---
+# Git write-back upgrades for the observability stack.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
@@ -16,10 +17,52 @@ spec:
   promotionTemplate:
     spec:
       steps:
+        - uses: git-clone
+          config:
+            repoURL: https://github.com/tesserix/tesserix-k8s.git
+            checkout:
+              - branch: main
+                path: ./repo
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/grafana.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("https://grafana.github.io/helm-charts", "grafana").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/prometheus.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("https://prometheus-community.github.io/helm-charts", "prometheus").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/prometheus-operator-crds.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("https://prometheus-community.github.io/helm-charts", "prometheus-operator-crds").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/fluent-bit.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("https://fluent.github.io/helm-charts", "fluent-bit").Version }}
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/kiali.yaml
+            updates:
+              - key: spec.source.targetRevision
+                value: ${{ chartFrom("https://kiali.org/helm-charts", "kiali-server").Version }}
+        - uses: git-commit
+          config:
+            path: ./repo
+            message: "chore(observability): kargo auto-upgrade to current freight"
+        - uses: git-push
+          config:
+            path: ./repo
+        # Trigger immediate syncs and wait for convergence instead of
+        # relying on ArgoCD's poll interval.
         - uses: argocd-update
-          # Mesh/observability rollouts pull fresh images across many
-          # workloads — the 5m default step timeout fires before health
-          # settles. Give promotions room to finish.
           retry:
             timeout: 30m
             errorThreshold: 3
@@ -27,43 +70,11 @@ spec:
             apps:
               - name: grafana
                 namespace: argocd
-                sources:
-                  - repoURL: https://grafana.github.io/helm-charts
-                    chart: grafana
-                    desiredRevision: ${{ chartFrom("https://grafana.github.io/helm-charts", "grafana").Version }}
               - name: prometheus
                 namespace: argocd
-                sources:
-                  - repoURL: https://prometheus-community.github.io/helm-charts
-                    chart: prometheus
-                    desiredRevision: ${{ chartFrom("https://prometheus-community.github.io/helm-charts", "prometheus").Version }}
               - name: prometheus-operator-crds
                 namespace: argocd
-                sources:
-                  - repoURL: https://prometheus-community.github.io/helm-charts
-                    chart: prometheus-operator-crds
-                    desiredRevision: ${{ chartFrom("https://prometheus-community.github.io/helm-charts", "prometheus-operator-crds").Version }}
               - name: fluent-bit
                 namespace: argocd
-                sources:
-                  - repoURL: https://fluent.github.io/helm-charts
-                    chart: fluent-bit
-                    desiredRevision: ${{ chartFrom("https://fluent.github.io/helm-charts", "fluent-bit").Version }}
               - name: kiali
                 namespace: argocd
-                sources:
-                  - repoURL: https://kiali.org/helm-charts
-                    chart: kiali-server
-                    desiredRevision: ${{ chartFrom("https://kiali.org/helm-charts", "kiali-server").Version }}
-              - name: elasticsearch
-                namespace: argocd
-                sources:
-                  - repoURL: https://helm.elastic.co
-                    chart: elasticsearch
-                    desiredRevision: ${{ chartFrom("https://helm.elastic.co", "elasticsearch").Version }}
-              - name: kibana
-                namespace: argocd
-                sources:
-                  - repoURL: https://helm.elastic.co
-                    chart: kibana
-                    desiredRevision: ${{ chartFrom("https://helm.elastic.co", "kibana").Version }}
