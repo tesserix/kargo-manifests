@@ -28,46 +28,46 @@ spec:
                 sources:
                   - repoURL: https://istio-release.storage.googleapis.com/charts
                     chart: base
-                    updateTargetRevision: true
+                    desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "base").Version }}
               - name: istio-cni
                 namespace: argocd
                 sources:
                   - repoURL: https://istio-release.storage.googleapis.com/charts
                     chart: cni
-                    updateTargetRevision: true
+                    desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "cni").Version }}
               - name: istio-istiod
                 namespace: argocd
                 sources:
                   - repoURL: https://istio-release.storage.googleapis.com/charts
                     chart: istiod
-                    updateTargetRevision: true
+                    desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "istiod").Version }}
               - name: istio-ztunnel
                 namespace: argocd
                 sources:
                   - repoURL: https://istio-release.storage.googleapis.com/charts
                     chart: ztunnel
-                    updateTargetRevision: true
+                    desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "ztunnel").Version }}
               - name: istio-egress-gateway
                 namespace: argocd
                 sources:
                   - repoURL: https://istio-release.storage.googleapis.com/charts
                     chart: gateway
-                    updateTargetRevision: true
+                    desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
               - name: istio-ingress-gateway-internal
                 namespace: argocd
                 sources:
                   - repoURL: https://istio-release.storage.googleapis.com/charts
                     chart: gateway
-                    updateTargetRevision: true
+                    desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
               - name: custom-ingress-gateway
                 namespace: argocd
                 sources:
                   - repoURL: https://istio-release.storage.googleapis.com/charts
                     chart: gateway
-                    updateTargetRevision: true
+                    desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
               - name: homechef-ingress-gateway
                 namespace: argocd
                 sources:
                   - repoURL: https://istio-release.storage.googleapis.com/charts
                     chart: gateway
-                    updateTargetRevision: true
+                    desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
