@@ -73,6 +73,22 @@ spec:
                         - key: image.tag
                           value: ${{ vars.imageTag }}
 
+        # ----- devai-mcp-bridge (own python+node image; runs stdio MCP
+        # servers over streamable-https). On the SAME main-<sha> as the rest:
+        # ensure-image-tags re-tags its :latest every commit, so the tag always
+        # resolves even on commits that didn't rebuild the bridge. -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: devai-mcp-bridge
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ vars.imageTag }}
+
         # ----- devai-sre (autonomous scanner) -----
         - uses: argocd-update
           config:
