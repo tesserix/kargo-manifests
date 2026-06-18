@@ -1,0 +1,34 @@
+---
+# Single-image product — only the tesserix-home Next.js app (deployed
+# as Deployment/company) is Kargo-managed.
+#
+# Manifest type: single-arch Docker v2 (CI builds with
+# `docker build --platform linux/amd64` and pushes `main-<sha7>` +
+# `latest`), so the `platform:` filter is intentionally OMITTED —
+# including it would silently drop every tag (Phase-1 retrospective
+# gotcha #10), exactly as for tesserix-blog.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s
+  subscriptions:
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-home
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5
+    # Track tesserix-k8s commits that touch this product's Helm chart
+    # / values / ArgoCD Application YAML. Kargo emits a Freight on
+    # every matching commit, the Stage promotes it, and ArgoCD's
+    # auto-sync picks up the actual deploy. Kargo provides the audit
+    # trail (which tesserix-k8s commit got promoted to prod, when).
+    - git:
+        repoURL: https://github.com/tesserix/tesserix-k8s.git
+        branch: main
+        includePaths:
+          - charts/apps/company/.*
+          - argocd/prod/apps/global/company\.yaml

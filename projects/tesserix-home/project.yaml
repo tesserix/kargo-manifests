@@ -1,0 +1,39 @@
+---
+# Kargo enforces: Project.metadata.name == namespace name. So the
+# Project is called `kargo-tesserix-home` to match the
+# kargo-tesserix-home namespace pre-created here.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-tesserix-home
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    # Per Kargo source (api/v1alpha1/labels.go LabelValueTrue), this
+    # label's value MUST be the literal string "true", not the project
+    # name.
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-tesserix-home
+  annotations:
+    kargo.akuity.io/description: |
+      tesserix-home — Next.js 16 company/marketing site at tesserix.app.
+      Deployed by the `company` Argo CD Application into the `tesserix`
+      namespace (Deployment/company, container `company`). One-env
+      (prod) deploy: image bumps land directly via the company App's
+      `image.tag` Helm parameter. The image repo on GitHub is
+      `tesserix/tesserix-home`; the in-cluster workload is named
+      `company` for historical reasons.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-tesserix-home
+  namespace: kargo-tesserix-home
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
