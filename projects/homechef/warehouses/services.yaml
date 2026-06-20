@@ -1,98 +1,52 @@
 ---
-# HomeChef's CI builds every service from the same monorepo. Each
-# image gets a `:main-<sha7>` tag on every push to main. We model the
-# whole product as a SINGLE Warehouse with one image subscription per
-# service — Kargo emits one Freight when ANY subscription sees a new
-# tag, and that Freight references the latest tags across every
-# service. The prod Stage promotes them as one bundle.
+# HomeChef promotes via the GIT COMMIT GRAPH, not image-tag discovery.
 #
-# Manifest type:
-#   All five HomeChef images are built as multi-arch OCI image indexes
-#   (linux/amd64 only today, but the index format makes that explicit).
-#   That means the `platform: linux/amd64` filter is REQUIRED — without
-#   it, NewestBuild can't pick a per-arch config blob and every tag is
-#   silently filtered (gotcha #10 from the Phase-1 retrospective).
-#   `curl -H 'Accept: application/vnd.oci.image.index.v1+json' \
-#     https://asia-south1-docker.pkg.dev/v2/.../homechef-api/manifests/main-<sha>`
-#   returns mediaType=application/vnd.oci.image.index.v1+json; if that
-#   ever flips to manifest.v2+json (a regular single-arch Docker
-#   manifest), drop the platform filter on the affected subscription.
+# Why: NewestBuild/Lexical/Digest all rank the registry tag list, but the
+# homechef-* repos have >100 `main-<sha>` tags. Artifact Registry paginates
+# the tag list at 100 in arbitrary order, so the newest `main-<sha>` lands on
+# a later page — outside Kargo's discoveryLimit — and NewestBuild silently
+# promotes the newest of a STALE page, flapping prod backwards. Observed
+# 2026-06-20: homechef-api flapped main-2246189 -> main-702c363 (an older
+# image whose layer lacks the temporal `worker` binary), the worker
+# CrashLoopBackOff'd, homechef-api went Degraded, the prod Stage errored at
+# step-1, and homechef-auth-bff therefore never advanced past main-741790f
+# (pre-/api/v1-proxy) -> admin portal 404'd every /bff/api/v1/admin/* call.
+# Same class of bug devai/stockpilot/scrapper hit; the fix is identical:
+# subscribe to the commit graph (true order, no pagination) and DERIVE
+# image.tag = main-<sha7> in the prod Stage.
 #
-# `homechef-auth-bff` IS subscribed below — it is built from this monorepo
-# (homechef-auth-bff-build.yml) as home-chef-app/homechef-auth-bff, the same
-# as the other services. (An earlier plan to move it to a shared
-# global-services image under a separate `kargo-shared-services` Project was
-# never realized; the live image is the homechef-built one, so it belongs in
-# this Warehouse — without it auth-bff had no Kargo coverage and its image was
-# never promoted.)
+# CI is path-filtered (only changed services rebuild), so the
+# `homechef-ensure-image-tags` workflow in tesserix/Home-Chef-App guarantees
+# every service image carries a `main-<sha>` tag for each promoted commit
+# (it carries unchanged / non-built services forward from their currently
+# deployed tag), THEN fast-forwards the `deploy` branch. Kargo watches
+# `deploy` (NOT `main`) so a commit is only promotable once all six images
+# are pullable — this avoids the GAR pull-through mirror negative-caching a
+# 404 for a not-yet-pushed tag (the devai race incident).
 #
-# NOTE — git subscription temporarily removed: the cluster-wide
-# tesserix-k8s-git-creds setup for Kargo is incomplete. With an empty
-# git subscription alongside the image subs, Kargo can't form Freight
-# (all subscriptions must yield artifacts). Same workaround as
-# support-platform (commit 636f1ba 2026-05-12). Restore the `git:`
-# block below once the cluster-wide GitHub credential setup lands —
-# chart-only changes in tesserix-k8s still deploy via ArgoCD's own
-# git polling, only the Kargo audit/promotion trail for chart edits
-# is missed in the interim. The CI bump-k8s job in tesserix/Home-Chef-App
-# also writes image.tag directly via the GitHub Contents API, so
-# Kargo's role here is a parallel/audit path, not the only one.
+# Images are still PULLED from the GAR mirror (image.repository in each
+# chart's values is unchanged); only the tag SOURCE moved to git. The git
+# read credential is the `home-chef-app-git-creds` Secret (cred-type=git,
+# scoped to this repo) provisioned via External Secrets in tesserix-k8s.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Warehouse
 metadata:
   name: services
 spec:
   freightCreationPolicy: Automatic
-  interval: 300s
+  # Kargo normalizes durations to Go canonical form (300s -> 5m0s); use the
+  # normalized form so the Warehouse doesn't read perpetually OutOfSync.
+  interval: 5m0s
   subscriptions:
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-api
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        platform: linux/amd64
-        discoveryLimit: 5
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-web
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        platform: linux/amd64
-        discoveryLimit: 5
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-admin-portal
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        platform: linux/amd64
-        discoveryLimit: 5
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-vendor-portal
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        platform: linux/amd64
-        discoveryLimit: 5
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-delivery-portal
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        platform: linux/amd64
-        discoveryLimit: 5
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-auth-bff
-        imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        platform: linux/amd64
-        discoveryLimit: 5
-    # Disabled — see header comment. Restore once cluster-wide
-    # tesserix-k8s-git-creds setup lands. Original block:
-    # - git:
-    #     repoURL: https://github.com/tesserix/tesserix-k8s.git
-    #     branch: main
-    #     includePaths:
-    #       - charts/apps/homechef-.*
-    #       - argocd/prod/apps/homechef/.*
-    #       - argocd/prod/apps/homechef-app-of-apps.yaml
+    # Authoritative trigger: every commit fast-forwarded onto the `deploy`
+    # branch becomes a Freight. The prod Stage derives
+    # image.tag = main-<commit sha7> for all six monorepo images
+    # (api, web, admin-portal, vendor-portal, delivery-portal, auth-bff).
+    # Commit-graph order is immune to the registry tag-list pagination that
+    # broke image discovery. `deploy` is advanced by ensure-image-tags only
+    # after every image's main-<sha> tag exists.
+    - git:
+        repoURL: https://github.com/tesserix/Home-Chef-App.git
+        branch: deploy
+        commitSelectionStrategy: NewestFromBranch
+        discoveryLimit: 20
