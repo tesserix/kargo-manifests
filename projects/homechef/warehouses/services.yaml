@@ -18,10 +18,13 @@
 #   ever flips to manifest.v2+json (a regular single-arch Docker
 #   manifest), drop the platform filter on the affected subscription.
 #
-# `homechef-auth-bff` is intentionally NOT subscribed here: it pulls a
-# shared image from `tesseract-nexus/global-services/auth-bff`, which
-# also serves DevAI and other future products. It will live under a
-# separate `kargo-shared-services` Project.
+# `homechef-auth-bff` IS subscribed below — it is built from this monorepo
+# (homechef-auth-bff-build.yml) as home-chef-app/homechef-auth-bff, the same
+# as the other services. (An earlier plan to move it to a shared
+# global-services image under a separate `kargo-shared-services` Project was
+# never realized; the live image is the homechef-built one, so it belongs in
+# this Warehouse — without it auth-bff had no Kargo coverage and its image was
+# never promoted.)
 #
 # NOTE — git subscription temporarily removed: the cluster-wide
 # tesserix-k8s-git-creds setup for Kargo is incomplete. With an empty
@@ -72,6 +75,13 @@ spec:
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-delivery-portal
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        platform: linux/amd64
+        discoveryLimit: 5
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-auth-bff
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
