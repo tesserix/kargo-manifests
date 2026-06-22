@@ -10,9 +10,15 @@
 # Application's spec.source.helm.parameters list. ArgoCD's automated
 # sync then rolls the Knative service / Deployment.
 #
-# `imageFrom("<repoURL>")` pulls the matching image entry from the
-# current Freight; `.Tag` returns the discovered tag (e.g.
-# "main-4eb62b7").
+# image.tag is DERIVED from the source repo's promoted commit (NOT
+# imageFrom), because the GAR/ghcr tag list paginates at 100 and broke
+# NewestBuild image discovery (see the warehouse for the incident note).
+# CI tags every changed service `main-<sha7>` and `ensure-image-tags`
+# carries unchanged services forward to the same `main-<sha7>`, so resolving
+# the tag from the commit ID yields the right image for ALL six services
+# without the broken registry-tag discovery. Images are still PULLED from
+# GAR (image.repository in each chart's values is the GAR mirror); only the
+# tag SOURCE changed.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
@@ -31,6 +37,10 @@ spec:
       vars:
         - name: argocdRepo
           value: https://github.com/tesserix/tesserix-k8s.git
+        # main-<sha7> from the tesserix/Home-Chef-App commit promoted onto
+        # the `deploy` branch — drives all six monorepo images.
+        - name: imageTag
+          value: main-${{ commitFrom("https://github.com/tesserix/Home-Chef-App.git").ID[0:7] }}
 
       steps:
         # ----- homechef-api -----
@@ -44,7 +54,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-api").Tag }}
+                          value: ${{ vars.imageTag }}
 
         # ----- homechef-web -----
         - uses: argocd-update
@@ -57,7 +67,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-web").Tag }}
+                          value: ${{ vars.imageTag }}
 
         # ----- homechef-admin-portal -----
         - uses: argocd-update
@@ -70,7 +80,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-admin-portal").Tag }}
+                          value: ${{ vars.imageTag }}
 
         # ----- homechef-vendor-portal -----
         - uses: argocd-update
@@ -83,7 +93,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-vendor-portal").Tag }}
+                          value: ${{ vars.imageTag }}
 
         # ----- homechef-delivery-portal -----
         - uses: argocd-update
@@ -96,7 +106,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-delivery-portal").Tag }}
+                          value: ${{ vars.imageTag }}
 
         # ----- homechef-auth-bff -----
         - uses: argocd-update
@@ -109,4 +119,4 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/home-chef-app/homechef-auth-bff").Tag }}
+                          value: ${{ vars.imageTag }}
