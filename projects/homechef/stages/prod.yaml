@@ -69,19 +69,6 @@ spec:
                         - key: image.tag
                           value: ${{ vars.imageTag }}
 
-        # ----- homechef-admin-portal -----
-        - uses: argocd-update
-          config:
-            apps:
-              - name: homechef-admin-portal
-                namespace: argocd
-                sources:
-                  - repoURL: ${{ vars.argocdRepo }}
-                    helm:
-                      images:
-                        - key: image.tag
-                          value: ${{ vars.imageTag }}
-
         # ----- homechef-vendor-portal -----
         - uses: argocd-update
           config:
