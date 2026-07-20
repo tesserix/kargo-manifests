@@ -82,19 +82,6 @@ spec:
                         - key: image.tag
                           value: ${{ vars.imageTag }}
 
-        # ----- homechef-delivery-portal -----
-        - uses: argocd-update
-          config:
-            apps:
-              - name: homechef-delivery-portal
-                namespace: argocd
-                sources:
-                  - repoURL: ${{ vars.argocdRepo }}
-                    helm:
-                      images:
-                        - key: image.tag
-                          value: ${{ vars.imageTag }}
-
         # ----- homechef-auth-bff -----
         - uses: argocd-update
           config:

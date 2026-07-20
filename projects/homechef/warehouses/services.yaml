@@ -40,8 +40,8 @@ spec:
   subscriptions:
     # Authoritative trigger: every commit fast-forwarded onto the `deploy`
     # branch becomes a Freight. The prod Stage derives
-    # image.tag = main-<commit sha7> for all six monorepo images
-    # (api, web, admin-portal, vendor-portal, delivery-portal, auth-bff).
+    # image.tag = main-<commit sha7> for the monorepo images
+    # (api, web, admin-portal, vendor-portal, auth-bff).
     # Commit-graph order is immune to the registry tag-list pagination that
     # broke image discovery. `deploy` is advanced by ensure-image-tags only
     # after every image's main-<sha> tag exists.
