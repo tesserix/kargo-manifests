@@ -46,7 +46,7 @@ spec:
         # to mark8ly/* — Kargo discovers new tags via the same
         # Warehouse subscription the rest of the project uses.
         - name: e2eImageRepo
-          value: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-uat-e2e
+          value: ghcr.io/tesserix/mark8ly-uat-e2e
       steps:
         # Bump the e2e Job's image.tag → triggers an Argo CD sync →
         # recreates the Job → Job runs Playwright against UAT →

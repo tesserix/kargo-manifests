@@ -24,43 +24,43 @@ spec:
   interval: 300s
   subscriptions:
     - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-admin
+        repoURL: ghcr.io/tesserix/mark8ly-admin
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
     - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-auth-bff
+        repoURL: ghcr.io/tesserix/mark8ly-auth-bff
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
     - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-marketplace-api
+        repoURL: ghcr.io/tesserix/mark8ly-marketplace-api
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
     - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-onboarding
+        repoURL: ghcr.io/tesserix/mark8ly-onboarding
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
     - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-otto
+        repoURL: ghcr.io/tesserix/mark8ly-otto
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
     - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-platform-api
+        repoURL: ghcr.io/tesserix/mark8ly-platform-api
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
     - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-storefront
+        repoURL: ghcr.io/tesserix/mark8ly-storefront
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
@@ -70,7 +70,7 @@ spec:
     # runs the suite against UAT URLs. Built by the mark8ly tracks
     # in the playwright-tests repo on push to main.
     - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/mark8ly-uat-e2e
+        repoURL: ghcr.io/tesserix/mark8ly-uat-e2e
         imageSelectionStrategy: NewestBuild
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
