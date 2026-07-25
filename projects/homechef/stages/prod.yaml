@@ -69,6 +69,22 @@ spec:
                         - key: image.tag
                           value: ${{ vars.imageTag }}
 
+        # ----- homechef-web-app (customer SPA) -----
+        # Distinct from homechef-web, which is the marketing landing. Both
+        # serve fe3dr.com, split by path in the Istio VirtualService, so both
+        # need promoting.
+        - uses: argocd-update
+          config:
+            apps:
+              - name: homechef-web-app
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ vars.imageTag }}
+
         # ----- homechef-vendor-portal -----
         - uses: argocd-update
           config:
