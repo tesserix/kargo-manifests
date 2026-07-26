@@ -1,0 +1,51 @@
+---
+# obs-api / obs-ui — the two images this org BUILDS for the observability
+# stack, as opposed to the third-party charts it consumes.
+#
+# Deliberately a SECOND warehouse rather than more subscriptions on
+# `observability`. A Warehouse emits ONE Freight covering all of its
+# subscriptions, so folding these in would bundle our image tags together
+# with the grafana/prometheus/kiali chart versions: a chart that cannot be
+# promoted (observability-prod has been unhealthy) would then also block
+# every application deploy. Same reasoning that excluded elasticsearch and
+# kibana from the chart warehouse.
+#
+# Cadence differs too — upstream charts publish a few times a month at
+# most, our own images land on every push to main.
+#
+# Subscribes to GHCR, not the GAR mirror the charts pull from, because the
+# GAR repo's ACL admits the GKE node SA only and not kargo-controller,
+# while the GHCR PAT (prod-ghcr-token) is already provisioned. Tag listing
+# transfers no layers, so the mirror's NAT-egress justification does not
+# apply. The promotion writes `image.tag` alone and leaves
+# `image.repository` on GAR, so pods still pull in-region.
+#
+# NOTE: no git subscription on tesserix-k8s here, unlike mark8ly. This
+# warehouse's stage git-pushes BACK to tesserix-k8s, so watching that repo
+# would make every promotion produce the commit that triggers the next
+# promotion — an endless loop.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: observability-apps
+  namespace: kargo-infra
+spec:
+  freightCreationPolicy: Automatic
+  interval: 5m0s
+  subscriptions:
+    # CI publishes a moving `main` plus an immutable `main-<sha7>`. Only the
+    # immutable form is matched: promoting `main` would pin the chart to a
+    # tag whose meaning changes underneath it, which is the exact bug this
+    # warehouse exists to retire.
+    - image:
+        repoURL: ghcr.io/tesserix/observability/obs-api
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5
+    - image:
+        repoURL: ghcr.io/tesserix/observability/obs-ui
+        imageSelectionStrategy: NewestBuild
+        allowTags: '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5

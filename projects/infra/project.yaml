@@ -42,5 +42,10 @@ spec:
       autoPromotionEnabled: true
     - stage: observability-prod
       autoPromotionEnabled: true
+    # Our own obs-api/obs-ui images, on a separate track from the
+    # third-party charts above so a stuck chart upgrade cannot hold back an
+    # application deploy. See warehouses/observability-apps.yaml.
+    - stage: observability-apps-prod
+      autoPromotionEnabled: true
     - stage: platform-tools-prod
       autoPromotionEnabled: true
