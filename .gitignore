@@ -15,3 +15,6 @@
 # but in case anyone runs helm template against templates/ during a debug session)
 .helm/
 charts/*.tgz
+
+# Local CRD dumps pulled from a cluster for schema lookups; not source.
+.crds/
