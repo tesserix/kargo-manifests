@@ -75,6 +75,21 @@ spec:
         allowTags: '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
+        # main-6308899 is a DANGLING TAG: it still exists on GHCR but the
+        # manifest it points at (sha256:5e61ba9e...) returns MANIFEST_UNKNOWN,
+        # so resolving it fails.
+        #
+        # Kargo discovers all subscriptions as one unit, so this single bad tag
+        # failed the whole Warehouse and NO freight was produced for any of the
+        # nine images — mark8ly stopped receiving promotions entirely while
+        # every individual build was green. The symptom is silent: Stages stay
+        # Healthy on old freight and nothing reports an error.
+        #
+        # Ignoring the tag unblocks discovery. It does not address why a
+        # referenced manifest disappeared from GHCR; if more tags dangle, the
+        # cause needs finding rather than adding entries here.
+        ignoreTags:
+          - main-6308899
     # Track tesserix-k8s commits that touch this product's Helm chart
     # / values / ArgoCD Application YAML. Kargo emits a Freight on
     # every matching commit, the Stage promotes it, and ArgoCD's
