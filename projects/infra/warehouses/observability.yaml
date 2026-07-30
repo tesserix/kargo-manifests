@@ -1,8 +1,9 @@
 ---
-# Observability stack — same-major auto-upgrades. The elastic charts are
-# effectively frozen upstream at 8.5.1 (chart line EOL'd), so those
-# subscriptions exist for completeness and will simply never produce
-# freight beyond the current version.
+# Observability stack — same-major auto-upgrades.
+# elasticsearch/kibana are EXCLUDED: the elastic chart line is EOL'd at
+# 8.5.1 (no upgrade will ever arrive) and the adopted elasticsearch
+# StatefulSet carries immutable-field drift that fails ArgoCD sync —
+# including them only blocks promotions of charts that DO move.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Warehouse
 metadata:
@@ -32,11 +33,3 @@ spec:
         repoURL: https://kiali.org/helm-charts
         name: kiali-server
         semverConstraint: ">=2.1.0 <3.0.0"
-    - chart:
-        repoURL: https://helm.elastic.co
-        name: elasticsearch
-        semverConstraint: ">=8.5.1 <9.0.0"
-    - chart:
-        repoURL: https://helm.elastic.co
-        name: kibana
-        semverConstraint: ">=8.5.1 <9.0.0"
