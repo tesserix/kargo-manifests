@@ -45,23 +45,22 @@ spec:
                         - key: image.tag
                           value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/slm-router").Tag }}
 
-        # ----- mcp-gateway (one image, deployed into six product
-        # namespaces) ----------------------------------------------------
+        # ----- mcp-gateway (one image, deployed into each product's
+        # namespace) ------------------------------------------------------
         # Each product MCP ArgoCD app uses the shared charts/apps/
         # mcp-gateway chart with a tenant parameter; Kargo sets
         # image.tag on every one of them so a single CI build rolls
-        # out to all six tenants atomically.
+        # out to all tenants atomically.
+        #
+        # This list must match the mcp apps that actually exist — an entry
+        # for a missing Application errors the whole Stage and blocks every
+        # other tenant's rollout. fanzone-mcp (decommissioned 2026-07-23),
+        # horoscope-mcp and gameverse-mcp were exactly that failure and are
+        # removed; the source of truth is which files are uncommented in
+        # tesserix-k8s argocd/prod/apps/ai-apps/kustomization.yaml.
         - uses: argocd-update
           config:
             apps:
-              - name: fanzone-mcp
-                namespace: argocd
-                sources:
-                  - repoURL: ${{ vars.argocdRepo }}
-                    helm:
-                      images:
-                        - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/mcp-gateway").Tag }}
               - name: homechef-mcp
                 namespace: argocd
                 sources:
@@ -86,15 +85,10 @@ spec:
                       images:
                         - key: image.tag
                           value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/mcp-gateway").Tag }}
-              - name: horoscope-mcp
-                namespace: argocd
-                sources:
-                  - repoURL: ${{ vars.argocdRepo }}
-                    helm:
-                      images:
-                        - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/mcp-gateway").Tag }}
-              - name: gameverse-mcp
+              # platform-mcp serves tesserix-home. It carries the
+              # kargo-support-platform:prod authorized-stage annotation but was
+              # never listed here, so it sat on a stale image.tag.
+              - name: platform-mcp
                 namespace: argocd
                 sources:
                   - repoURL: ${{ vars.argocdRepo }}

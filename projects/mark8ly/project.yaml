@@ -21,15 +21,13 @@ metadata:
   annotations:
     kargo.akuity.io/description: |
       mark8ly multi-tenant marketplace platform.
-      Promotion model (prod delinked from UAT):
-        Warehouse -> prod        (direct, fully auto-promoted)
-        Warehouse -> uat -> smoke (independent, manual QA track)
+      Promotion model:
+        Warehouse -> prod (direct, fully auto-promoted)
       Every new image (or matching tesserix-k8s commit) auto-promotes
-      straight to prod. The uat/smoke track is manually triggered for
-      QA and no longer gates prod. UAT runs in the mark8ly-uat namespace
-      at admin-uat.mark8ly.com / uat.mark8ly.com / onboarding-uat.mark8ly.com
-      (idle at 0 replicas via KEDA scale-to-zero); prod stays in the
-      mark8ly namespace.
+      straight to prod with no lower-env gate. The uat and smoke Stages
+      were removed with the UAT environment itself (tesserix-k8s #101,
+      2026-07-26); restore them from git history alongside the
+      mark8ly-uat Applications if a staging track is needed again.
 ---
 apiVersion: kargo.akuity.io/v1alpha1
 kind: ProjectConfig
@@ -41,14 +39,5 @@ spec:
     # Prod is FULLY automated: it sources Freight directly from the
     # Warehouse (see stages/prod.yaml) and auto-promotes every new
     # build straight to prod with no lower-env gate.
-    #
-    # UAT is now MANUAL — Freight only enters uat when an operator
-    # triggers it via the Kargo UI or `kubectl create promotion`. Smoke
-    # auto-follows uat so a manual UAT promotion still runs e2e, but the
-    # whole uat -> smoke track is decoupled from prod.
     - stage: prod
-      autoPromotionEnabled: true
-    - stage: uat
-      autoPromotionEnabled: false
-    - stage: smoke
       autoPromotionEnabled: true
