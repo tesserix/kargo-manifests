@@ -2,8 +2,13 @@
 # Platform tooling — same-major auto-upgrades; 0.x ecosystems (kagent, arc)
 # are pinned to their current minor because 0.x minors are semver-breaking.
 # This warehouse makes the platform SELF-MANAGING: it covers Kargo (Kargo
-# upgrades Kargo) and ArgoCD (the argocd Application is self-managed; a
-# promotion here rolls the GitOps control plane itself).
+# upgrades Kargo).
+#
+# argo-cd is deliberately ABSENT since the 2026-07-21 operator migration:
+# the argocd Application now deploys charts/argocd-operator by PATH, so its
+# targetRevision is a git ref. Writing the argo-helm chart version into it
+# (which this stage used to do) left it unresolvable. ArgoCD versions now
+# move by editing the operator CR, not by a chart bump.
 #
 # external-secrets is deliberately ABSENT: 0.9.x -> 1.x drops the v1beta1
 # API every manifest in tesserix-k8s still uses. Add it after the repo-wide
@@ -28,10 +33,6 @@ spec:
         repoURL: https://charts.jetstack.io
         name: cert-manager
         semverConstraint: ">=1.20.2 <2.0.0"
-    - chart:
-        repoURL: https://argoproj.github.io/argo-helm
-        name: argo-cd
-        semverConstraint: ">=9.5.21 <10.0.0"
     - chart:
         repoURL: https://bitnami.github.io/sealed-secrets
         name: sealed-secrets
