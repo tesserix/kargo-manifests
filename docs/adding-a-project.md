@@ -113,7 +113,8 @@ spec:
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/<service>
         imageSelectionStrategy: Lexical    # see note below
-        allowTags: '^main-[a-f0-9]{7,12}$'  # main-<sha7-12> from CI
+        allowTagsRegexes:  # main-<sha7-12> from CI
+          - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false                # tags aren't semver — required (gotcha)
         # platform: linux/amd64             # ONLY for multi-arch OCI indexes — gotcha #10
         discoveryLimit: 5                   # newest 5 tags is plenty

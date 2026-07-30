@@ -26,14 +26,16 @@ spec:
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/otto
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/slm-router
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5
@@ -44,7 +46,8 @@ spec:
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/mcp-gateway
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         platform: linux/amd64
         discoveryLimit: 5

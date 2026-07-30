@@ -26,43 +26,50 @@ spec:
     - image:
         repoURL: ghcr.io/tesserix/mark8ly-admin
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
     - image:
         repoURL: ghcr.io/tesserix/mark8ly-auth-bff
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
     - image:
         repoURL: ghcr.io/tesserix/mark8ly-marketplace-api
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
     - image:
         repoURL: ghcr.io/tesserix/mark8ly-onboarding
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
     - image:
         repoURL: ghcr.io/tesserix/mark8ly-otto
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
     - image:
         repoURL: ghcr.io/tesserix/mark8ly-platform-api
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
     - image:
         repoURL: ghcr.io/tesserix/mark8ly-storefront
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
     # Playwright e2e runner image. Smoke Stage bumps this on the
@@ -72,7 +79,8 @@ spec:
     - image:
         repoURL: ghcr.io/tesserix/mark8ly-uat-e2e
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 5
         # main-6308899 is a DANGLING TAG: it still exists on GHCR but the
@@ -88,8 +96,8 @@ spec:
         # Ignoring the tag unblocks discovery. It does not address why a
         # referenced manifest disappeared from GHCR; if more tags dangle, the
         # cause needs finding rather than adding entries here.
-        ignoreTags:
-          - main-6308899
+        ignoreTagsRegexes:
+          - '^main-6308899$'
     # Track tesserix-k8s commits that touch this product's Helm chart
     # / values / ArgoCD Application YAML. Kargo emits a Freight on
     # every matching commit, the Stage promotes it, and ArgoCD's

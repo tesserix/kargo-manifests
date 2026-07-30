@@ -53,6 +53,7 @@ spec:
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/agentic-registry
         imageSelectionStrategy: NewestBuild
-        allowTags: '^main-[a-f0-9]{7,12}$'
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
         discoveryLimit: 100
