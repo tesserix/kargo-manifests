@@ -53,7 +53,7 @@ spec:
             path: ./repo/argocd/prod/infrastructure/sealed-secrets.yaml
             updates:
               - key: spec.source.targetRevision
-                value: ${{ chartFrom("https://bitnami-labs.github.io/sealed-secrets", "sealed-secrets").Version }}
+                value: ${{ chartFrom("https://bitnami.github.io/sealed-secrets", "sealed-secrets").Version }}
         - uses: yaml-update
           config:
             path: ./repo/argocd/prod/infrastructure/reloader.yaml
