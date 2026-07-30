@@ -43,12 +43,6 @@ spec:
                 value: ${{ chartFrom("https://prometheus-community.github.io/helm-charts", "prometheus-operator-crds").Version }}
         - uses: yaml-update
           config:
-            path: ./repo/argocd/prod/infrastructure/fluent-bit.yaml
-            updates:
-              - key: spec.source.targetRevision
-                value: ${{ chartFrom("https://fluent.github.io/helm-charts", "fluent-bit").Version }}
-        - uses: yaml-update
-          config:
             path: ./repo/argocd/prod/infrastructure/kiali.yaml
             updates:
               - key: spec.source.targetRevision
@@ -73,8 +67,6 @@ spec:
               - name: prometheus
                 namespace: argocd
               - name: prometheus-operator-crds
-                namespace: argocd
-              - name: fluent-bit
                 namespace: argocd
               - name: kiali
                 namespace: argocd

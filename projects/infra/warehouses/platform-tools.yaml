@@ -48,9 +48,6 @@ spec:
         repoURL: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller
         semverConstraint: ">=0.13.1 <0.14.0"
     - chart:
-        repoURL: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
-        semverConstraint: ">=0.13.1 <0.14.0"
-    - chart:
         repoURL: oci://ghcr.io/agentgateway/agentgateway/charts/agentgateway
         semverConstraint: ">=1.0.1 <2.0.0"
     - chart:

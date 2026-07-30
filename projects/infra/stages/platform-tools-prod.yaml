@@ -74,12 +74,6 @@ spec:
                 value: ${{ chartFrom("oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller").Version }}
         - uses: yaml-update
           config:
-            path: ./repo/argocd/prod/infrastructure/arc-runner-scale-set.yaml
-            updates:
-              - key: spec.source.targetRevision
-                value: ${{ chartFrom("oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set").Version }}
-        - uses: yaml-update
-          config:
             path: ./repo/argocd/prod/infrastructure/agentgateway.yaml
             updates:
               - key: spec.source.targetRevision
@@ -132,8 +126,6 @@ spec:
               - name: external-dns
                 namespace: argocd
               - name: arc-controller
-                namespace: argocd
-              - name: arc-runner-scale-set
                 namespace: argocd
               - name: agentgateway
                 namespace: argocd

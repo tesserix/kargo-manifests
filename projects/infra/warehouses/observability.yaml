@@ -4,6 +4,10 @@
 # 8.5.1 (no upgrade will ever arrive) and the adopted elasticsearch
 # StatefulSet carries immutable-field drift that fails ArgoCD sync —
 # including them only blocks promotions of charts that DO move.
+# fluent-bit is EXCLUDED for the same reason: prod's collection tier is
+# otel-agent now (tesserix-k8s #89 deleted
+# argocd/prod/infrastructure/fluent-bit.yaml), so a promotion of it had
+# nowhere to write back to.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Warehouse
 metadata:
@@ -25,10 +29,6 @@ spec:
         repoURL: https://prometheus-community.github.io/helm-charts
         name: prometheus-operator-crds
         semverConstraint: ">=18.0.1 <19.0.0"
-    - chart:
-        repoURL: https://fluent.github.io/helm-charts
-        name: fluent-bit
-        semverConstraint: ">=0.47.10 <1.0.0"
     - chart:
         repoURL: https://kiali.org/helm-charts
         name: kiali-server
