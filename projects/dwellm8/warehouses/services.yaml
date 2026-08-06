@@ -1,0 +1,18 @@
+---
+# The API is tagged `main-<full sha>` by tesserix/dwellm8 CI, so the regex is
+# 40 hex characters rather than the short form used elsewhere.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s
+  subscriptions:
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/dwellm8/dwellm8-api
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{40}$'
+        strictSemvers: false
+        discoveryLimit: 5

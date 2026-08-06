@@ -1,0 +1,35 @@
+---
+# Kargo enforces: Project.metadata.name == namespace name.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-dwellm8
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-dwellm8
+  annotations:
+    kargo.akuity.io/description: |
+      Dwellm8 — the India-first rental platform. One deployable per ADR-0001:
+      the `dwellm8-api` modular monolith serves every app, console and the
+      public site, deployed by the `dwellm8-api` Argo CD Application into the
+      `dwellm8` namespace.
+
+      Schema is not promoted here: `dwellm8-db-schema-bootstrap` applies its
+      chapters on a half-hourly CronJob, so a chapter lands before the code
+      that reads it.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-dwellm8
+  namespace: kargo-dwellm8
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
