@@ -49,3 +49,8 @@ spec:
       autoPromotionEnabled: true
     - stage: platform-tools-prod
       autoPromotionEnabled: true
+    # OpenBao, on its own track: it is the secret store every ExternalSecret
+    # reads through, so a stuck upgrade here must not block the rest of the
+    # platform, nor be blocked by it. See warehouses/openbao.yaml.
+    - stage: openbao-prod
+      autoPromotionEnabled: true

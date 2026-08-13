@@ -1,0 +1,73 @@
+---
+# Git write-back upgrades for OpenBao.
+#
+# Unlike platform-tools this stage does NOT write a chart version into
+# spec.source.targetRevision: the openbao Application deploys
+# charts/thirdparty/openbao by PATH, so targetRevision is a git ref and a
+# version there breaks it with "unable to resolve '0.29.1' to a commit SHA"
+# (see fec0cf2). The upstream chart is a vendored dependency, so the version
+# lives in Chart.yaml and is bumped with helm-update-chart, which also
+# re-runs `helm dependency update` to refresh Chart.lock and the tarball.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: openbao-prod
+  namespace: kargo-infra
+  annotations:
+    kargo.akuity.io/color: '#8B5CF6'
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: openbao
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      steps:
+        - uses: git-clone
+          config:
+            repoURL: https://github.com/tesserix/tesserix-k8s.git
+            checkout:
+              - branch: main
+                path: ./repo
+        # Rewrites the dependency version, Chart.lock and charts/*.tgz.
+        - uses: helm-update-chart
+          config:
+            path: ./repo/charts/thirdparty/openbao
+            charts:
+              - repository: https://openbao.github.io/openbao-helm
+                name: openbao
+                version: ${{ chartFrom("https://openbao.github.io/openbao-helm", "openbao").Version }}
+        # The image tag is pinned in values.yaml rather than left to the
+        # subchart's appVersion, so it has to move on its own.
+        - uses: yaml-update
+          config:
+            path: ./repo/charts/thirdparty/openbao/values.yaml
+            updates:
+              - key: openbao.server.image.tag
+                value: ${{ imageFrom("quay.io/openbao/openbao").Tag }}
+        - uses: yaml-update
+          config:
+            path: ./repo/charts/thirdparty/openbao/Chart.yaml
+            updates:
+              - key: appVersion
+                value: ${{ imageFrom("quay.io/openbao/openbao").Tag }}
+        - uses: git-commit
+          config:
+            path: ./repo
+            message: "chore(openbao): kargo auto-upgrade to current freight"
+        - uses: git-push
+          config:
+            path: ./repo
+        # Trigger an immediate sync and wait for convergence. A rolling
+        # StatefulSet restart is safe here only because the seal is gcpckms:
+        # each pod auto-unseals on start, so no human is in the loop.
+        - uses: argocd-update
+          retry:
+            timeout: 30m
+            errorThreshold: 3
+          config:
+            apps:
+              - name: openbao
+                namespace: argocd
