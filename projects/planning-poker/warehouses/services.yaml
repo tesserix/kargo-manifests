@@ -47,6 +47,7 @@ spec:
         # discovers no commits and never produces Freight. Use `regex:` to opt in.
         includePaths:
           - charts/apps/planning-poker/
+          - charts/apps/planning-poker-postgres/
           - charts/apps/nats/values-planning-poker.yaml
           - argocd/prod/apps/planning-poker/
           - argocd/prod/apps/planning-poker-app-of-apps.yaml
