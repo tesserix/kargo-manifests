@@ -1,8 +1,10 @@
 ---
-# Single-image product — only the tesserix-home Next.js app (deployed
-# as Deployment/company) is Kargo-managed.
+# Two images, one repo. The tesserix-home monorepo builds and pushes both
+# the Next.js web app (deployed as Deployment/company, tesserix.app) and
+# the operator console (Deployment/console, console.tesserix.app) from the
+# same CI run on every merge to main.
 #
-# Manifest type: single-arch Docker v2 (CI builds with
+# Manifest type: single-arch Docker v2 for BOTH (CI builds each with
 # `docker build --platform linux/amd64` and pushes `main-<sha7>` +
 # `latest`), so the `platform:` filter is intentionally OMITTED —
 # including it would silently drop every tag (Phase-1 retrospective
@@ -17,6 +19,25 @@ spec:
   subscriptions:
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-home
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5
+    # Operator console (apps/console). Same shape as the subscription above
+    # on purpose: no `platform:` filter, and allowTagsRegexes pinned to the
+    # `main-<sha7>` form CI produces — `latest` is deliberately excluded so a
+    # Freight always names an immutable tag.
+    #
+    # MERGE ORDER MATTERS. A Warehouse produces Freight only once it can
+    # discover an artifact for EVERY subscription, so this must not land
+    # before tesserix-home CI has pushed at least one
+    # `tesserix-console:main-<sha7>` to the GAR mirror — until then the
+    # warehouse discovers nothing and `company` stops being promoted too.
+    # Merge the tesserix-home console PR first, let its CI run, then merge
+    # this.
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-console
         imageSelectionStrategy: NewestBuild
         allowTagsRegexes:
           - '^main-[a-f0-9]{7,12}$'
