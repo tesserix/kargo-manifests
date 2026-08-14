@@ -1,10 +1,12 @@
 ---
-# Single prod Stage — auto-promotes the latest main-<sha7> tag onto
-# the `company` Argo CD Application's spec.source.helm.parameters.
+# Single prod Stage — auto-promotes the latest main-<sha7> tags onto the
+# `company` and `console` Argo CD Applications'
+# spec.source.helm.parameters. Both images come from the same warehouse
+# Freight, so the two surfaces always advance to the same commit.
 #
-# The Application has annotation
+# BOTH Applications carry the annotation
 #   kargo.akuity.io/authorized-stage: kargo-tesserix-home:prod
-# without which Kargo refuses to mutate it.
+# without which Kargo refuses to mutate them.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
@@ -36,3 +38,11 @@ spec:
                       images:
                         - key: image.tag
                           value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-home").Tag }}
+              - name: console
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-console").Tag }}
