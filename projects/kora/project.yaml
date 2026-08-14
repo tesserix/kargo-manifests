@@ -1,0 +1,41 @@
+---
+# Kargo enforces: Project.metadata.name == namespace name. The Project is
+# called `kargo-kora` to match the kargo-kora namespace pre-created here, and
+# to match the annotation already on the kora-api ArgoCD Application
+# (kargo.akuity.io/authorized-stage: kargo-kora:prod), which until now pointed
+# at a Stage that did not exist — so kora-api deployed only by hand-editing
+# values in tesserix-k8s.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-kora
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    # Per Kargo source (api/v1alpha1/labels.go LabelValueTrue), this label's
+    # value MUST be the literal string "true", not the project name.
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-kora
+  annotations:
+    kargo.akuity.io/description: |
+      Kora — AI food logging (Expo mobile app + a single Go API).
+      One image, one Stage:
+        * kora-api — Go/Gin API backing the mobile app and the platform
+          console's Kora surfaces (HMAC-signed /v1/admin/*).
+      One-env (prod) deploy: image bumps land directly into the `kora`
+      namespace via the kora-api ArgoCD Application under the `kora`
+      AppProject.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-kora
+  namespace: kargo-kora
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
