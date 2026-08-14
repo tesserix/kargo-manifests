@@ -42,8 +42,11 @@ spec:
     - git:
         repoURL: https://github.com/tesserix/tesserix-k8s.git
         branch: main
+        # Plain strings are matched as path PREFIXES, not regexes — a pattern
+        # like `charts/apps/planning-poker/.*` matches no file, the Warehouse
+        # discovers no commits and never produces Freight. Use `regex:` to opt in.
         includePaths:
-          - charts/apps/planning-poker/.*
-          - charts/apps/nats/values-planning-poker\.yaml
-          - argocd/prod/apps/planning-poker/.*
-          - argocd/prod/apps/planning-poker-app-of-apps\.yaml
+          - charts/apps/planning-poker/
+          - charts/apps/nats/values-planning-poker.yaml
+          - argocd/prod/apps/planning-poker/
+          - argocd/prod/apps/planning-poker-app-of-apps.yaml
