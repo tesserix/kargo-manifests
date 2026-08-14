@@ -29,13 +29,32 @@ spec:
     # `main-<sha7>` form CI produces — `latest` is deliberately excluded so a
     # Freight always names an immutable tag.
     #
-    # MERGE ORDER MATTERS. A Warehouse produces Freight only once it can
-    # discover an artifact for EVERY subscription, so this must not land
-    # before tesserix-home CI has pushed at least one
-    # `tesserix-console:main-<sha7>` to the GAR mirror — until then the
-    # warehouse discovers nothing and `company` stops being promoted too.
-    # Merge the tesserix-home console PR first, let its CI run, then merge
-    # this.
+    # MERGE ORDER MATTERS — TWO PRECONDITIONS, BOTH OF THEM ONE-WAY.
+    # Getting either wrong stops `company` (tesserix.app) being promoted,
+    # not just the console.
+    #
+    #   1. THE IMAGE MUST EXIST. A Warehouse produces Freight only once it
+    #      can discover an artifact for EVERY subscription. Until
+    #      tesserix-home CI has pushed at least one
+    #      `tesserix-console:main-<sha7>` to the GAR mirror, this warehouse
+    #      discovers nothing at all and no Freight is created — so the web
+    #      image stops flowing too.
+    #
+    #   2. THE `console` ARGO CD APPLICATION MUST ALREADY EXIST AND HAVE
+    #      SYNCED. The `argocd-update` step in ../stages/prod.yaml now names
+    #      two Applications, and that step ERRORS if a named Application is
+    #      absent — a failed Promotion blocks every other app in the same
+    #      step. This is not hypothetical: see commit 691d092, where
+    #      kargo-support-platform:prod errored for five days on "unable to
+    #      find Argo CD Application fanzone-mcp" (decommissioned) and
+    #      blocked the image rollout for every other tenant.
+    #
+    # Required order, and this file is the LAST of the four:
+    #   tesserix-home console PR merged
+    #     -> its CI pushes tesserix-console:main-<sha7>
+    #     -> tesserix-k8s console PR merged AND the `console` Application
+    #        synced in Argo CD
+    #     -> this PR.
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-console
         imageSelectionStrategy: NewestBuild
