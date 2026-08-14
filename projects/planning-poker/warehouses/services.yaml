@@ -1,0 +1,49 @@
+---
+# Planning Poker promotes via the GIT COMMIT GRAPH, not image-tag discovery
+# — the same decision as homechef/devai. NewestBuild ranks a registry tag
+# list that Artifact Registry paginates at 100 in arbitrary order, so once a
+# repo passes 100 `main-<sha>` tags the newest one lands off-page and the
+# Stage silently promotes the newest of a STALE page, flapping prod
+# backwards. The commit graph has true order and no pagination.
+#
+# CI is path-filtered — a web-only commit doesn't rebuild the api image — so
+# the `ensure-image-tags` workflow in tesserix/planning-poker carries the
+# unchanged image forward to the same `main-<sha7>` and only then
+# fast-forwards `deploy`. Kargo watches `deploy` (NOT `main`) so a commit is
+# promotable only once BOTH images are pullable, which is what keeps the GAR
+# pull-through mirror from negative-caching a 404 on a not-yet-pushed tag.
+#
+# Images are still PULLED from the GAR mirror (image.repository in
+# charts/apps/planning-poker/values.yaml is unchanged); only the tag SOURCE
+# is git. The read credential is the `planning-poker-git-creds` Secret
+# (cred-type=git, scoped to this repo) provisioned by External Secrets in
+# tesserix-k8s.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  # Kargo normalizes durations to Go canonical form (300s -> 5m0s); use the
+  # normalized form so the Warehouse doesn't read perpetually OutOfSync.
+  interval: 5m0s
+  subscriptions:
+    # Authoritative trigger: every commit fast-forwarded onto `deploy`
+    # becomes a Freight. The prod Stage derives image.tag = main-<sha7>
+    # from it for both the api and web images.
+    - git:
+        repoURL: https://github.com/tesserix/planning-poker.git
+        branch: deploy
+        commitSelectionStrategy: NewestFromBranch
+        discoveryLimit: 20
+    # Track tesserix-k8s commits touching this product's chart, values or
+    # Argo CD Application YAML, so a config-only change also gets a Freight
+    # and the same audit trail as an image bump.
+    - git:
+        repoURL: https://github.com/tesserix/tesserix-k8s.git
+        branch: main
+        includePaths:
+          - charts/apps/planning-poker/.*
+          - charts/apps/nats/values-planning-poker\.yaml
+          - argocd/prod/apps/planning-poker/.*
+          - argocd/prod/apps/planning-poker-app-of-apps\.yaml

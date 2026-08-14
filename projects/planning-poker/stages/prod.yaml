@@ -1,0 +1,49 @@
+---
+# Single prod Stage — auto-promotes Freight from the bundled Warehouse onto
+# the `planning-poker` Argo CD Application. One Application carries both
+# images, so api and web always move in lock-step; a web build that changed
+# the wire format can never reach users ahead of the api that serves it.
+#
+# The Application has annotation
+#   kargo.akuity.io/authorized-stage: kargo-planning-poker:prod
+# without which Kargo refuses to mutate it.
+#
+# image.tag is DERIVED from the promoted commit (NOT imageFrom) — see the
+# Warehouse for the tag-list pagination incident that rules out discovery.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: prod
+  annotations:
+    kargo.akuity.io/color: '#0EA5E9'
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: services
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      vars:
+        - name: argocdRepo
+          value: https://github.com/tesserix/tesserix-k8s.git
+        # main-<sha7> of the tesserix/planning-poker commit promoted onto
+        # the `deploy` branch — drives both images.
+        - name: imageTag
+          value: main-${{ commitFrom("https://github.com/tesserix/planning-poker.git").ID[0:7] }}
+
+      steps:
+        - uses: argocd-update
+          config:
+            apps:
+              - name: planning-poker
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: api.image.tag
+                          value: ${{ vars.imageTag }}
+                        - key: web.image.tag
+                          value: ${{ vars.imageTag }}
