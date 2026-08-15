@@ -1,0 +1,39 @@
+---
+# Kora ships ONE image (kora-api) from the tesserix/kora repo, pulled at
+# runtime from the GAR ghcr-remote mirror — never ghcr.io directly.
+#
+# Why we DISCOVER from git, not from image tags:
+# `imageSelectionStrategy: NewestBuild` (and Lexical/Digest) all depend on the
+# registry tag list. kora-api ALREADY has >=100 published tags — verified via
+# the GHCR packages API on 2026-08-14 — and the registry paginates at 100 in an
+# arbitrary order while Kargo's discoveryLimit is hard-capped at 100. NewestBuild
+# would therefore never see the newest build and would silently promote the
+# newest of the stale page-1 tags, flapping prod backwards. DevAI hit exactly
+# this on 2026-06-09 (see projects/devai/warehouses/services.yaml); Kora is
+# already past the same threshold, so image discovery is not an option here —
+# it is a defect waiting to happen.
+#
+# Kora's CI tags each main build with the FULL 40-char commit sha (github.sha),
+# not main-<sha7> — so the prod Stage derives the tag as the whole commit ID.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  # Kargo normalizes durations to Go's canonical form (300s -> 5m0s); use the
+  # normalized form so the Warehouse doesn't read perpetually OutOfSync.
+  interval: 5m0s
+  subscriptions:
+    # Watch `deploy`, NOT `main`. Kora's build-image job fast-forwards `deploy`
+    # to the built commit ONLY after both docker pushes succeed, so a commit on
+    # `deploy` is guaranteed to have a pullable image (tesserix/kora#161).
+    #
+    # Watching `main` directly races the build: Kargo promotes instantly, the
+    # pod pulls a not-yet-existing tag, and the GAR pull-through mirror
+    # negative-caches that 404 — an ImagePullBackOff that never recovers.
+    - git:
+        repoURL: https://github.com/tesserix/kora.git
+        branch: deploy
+        commitSelectionStrategy: NewestFromBranch
+        discoveryLimit: 20
