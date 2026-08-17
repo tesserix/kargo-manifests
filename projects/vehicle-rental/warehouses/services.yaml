@@ -1,0 +1,48 @@
+---
+# One Warehouse for all four images: CI builds them from the same commit, so
+# the `main-<sha>` tags appear together and one Freight should carry the set.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s
+  subscriptions:
+    - image:
+        repoURL: ghcr.io/tesserix/vehicle-rental-api
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5
+    - image:
+        repoURL: ghcr.io/tesserix/vehicle-rental-storefront
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5
+    - image:
+        repoURL: ghcr.io/tesserix/vehicle-rental-admin
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5
+    - image:
+        repoURL: ghcr.io/tesserix/vehicle-rental-onboarding
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5
+    # Chart and Application changes promote through the same Stage, so the
+    # audit trail answers "which tesserix-k8s commit reached prod, and when".
+    - git:
+        repoURL: https://github.com/tesserix/tesserix-k8s.git
+        branch: main
+        includePaths:
+          - charts/apps/vehicle-rental-.*
+          - argocd/prod/apps/vehicle-rental/.*
+          - argocd/prod/apps/vehicle-rental-app-of-apps.yaml

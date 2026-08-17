@@ -1,0 +1,35 @@
+---
+# Kargo requires Project.metadata.name to equal the namespace name, so the
+# namespace is pre-created here with the name the Project will claim.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-vehicle-rental
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    # The label's value must be the literal "true" (Kargo
+    # api/v1alpha1/labels.go), not the project name.
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-vehicle-rental
+  annotations:
+    kargo.akuity.io/description: |
+      Multi-tenant vehicle rental platform: one Rust API and three Next
+      surfaces (storefront, counter admin, onboarding).
+
+      Promotion model: Warehouse -> prod, direct and auto-promoted. There is
+      no lower environment yet; add one by pointing prod's sources at it.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-vehicle-rental
+  namespace: kargo-vehicle-rental
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
