@@ -1,10 +1,10 @@
 ---
 # Single prod Stage — auto-promotes the latest main-<sha7> tags onto the
-# `company` and `console` Argo CD Applications'
-# spec.source.helm.parameters. Both images come from the same warehouse
-# Freight, so the two surfaces always advance to the same commit.
+# `company`, `console` and `platform-api` Argo CD Applications'
+# spec.source.helm.parameters. All three images come from the same warehouse
+# Freight, so the surfaces always advance to the same commit.
 #
-# BOTH Applications carry the annotation
+# ALL THREE Applications carry the annotation
 #   kargo.akuity.io/authorized-stage: kargo-tesserix-home:prod
 # without which Kargo refuses to mutate them.
 apiVersion: kargo.akuity.io/v1alpha1
@@ -46,3 +46,13 @@ spec:
                       images:
                         - key: image.tag
                           value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-console").Tag }}
+              # Platform API — the Go service (ADR-003 D2). Cluster-internal,
+              # so unlike its two siblings it carries no hostname parameters.
+              - name: platform-api
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-platform-api").Tag }}
