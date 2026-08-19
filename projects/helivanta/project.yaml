@@ -1,0 +1,45 @@
+---
+# Kargo enforces: Project.metadata.name == namespace name. The Project is
+# `kargo-helivanta`, matching the namespace created here and the
+# `kargo.akuity.io/authorized-stage: kargo-helivanta:prod` annotation on the
+# helivanta-api and helivanta-shell Applications in tesserix-k8s.
+#
+# Until this existed, Helivanta had no promotion path at all: image.tag was
+# pinned by hand in charts/apps/helivanta-*/values.yaml, so a merged fix built
+# an image that never deployed. Three merges (tesserix/helivanta#900, #902,
+# #903) sat undeployed behind a stale tag on 2026-08-19 while every pod
+# reported Ready and every Application reported Synced.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-helivanta
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    # Per Kargo source (api/v1alpha1/labels.go LabelValueTrue), this label's
+    # value MUST be the literal string "true", not the project name.
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-helivanta
+  annotations:
+    kargo.akuity.io/description: |
+      Helivanta — hospital management (Go/Gin API + Next.js shell).
+      Two images, one Stage, promoted together:
+        * helivanta-api   — the backend, and the migrate binary it ships
+                            alongside (one image, two entrypoints).
+        * helivanta-shell — the Next.js shell that serves the branded login.
+      One-env (prod) deploy into the `helivanta` namespace under the
+      `helivanta` AppProject.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-helivanta
+  namespace: kargo-helivanta
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true

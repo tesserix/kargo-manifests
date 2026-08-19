@@ -1,0 +1,42 @@
+---
+# Helivanta ships TWO images from tesserix/helivanta — helivanta-api and
+# helivanta-shell — both pulled at runtime from the GAR ghcr-remote mirror,
+# never ghcr.io directly.
+#
+# WHY WE DISCOVER FROM GIT, NOT FROM IMAGE TAGS.
+# `imageSelectionStrategy: NewestBuild` (and Lexical/Digest) all read the
+# registry's tag list. Artifact Registry paginates that list at 100 in an
+# arbitrary order and Kargo's discoveryLimit is hard-capped at 100, so once an
+# image passes 100 tags the newest build stops being visible and Kargo promotes
+# the newest of a stale page — flapping production BACKWARDS. DevAI hit this on
+# 2026-06-09 (projects/devai/warehouses/services.yaml) and Kora was already past
+# the threshold when its project was written. Helivanta is below it today, which
+# is exactly why this is being set up correctly now rather than after the
+# incident.
+#
+# WHY `deploy` AND NOT `main`.
+# A commit lands on main before its images exist. A Warehouse watching main
+# creates Freight immediately, the Stage writes that tag onto the Applications,
+# the pods pull a tag that has not been pushed yet, and the GAR pull-through
+# mirror NEGATIVE-CACHES the 404 — an ImagePullBackOff that does not recover
+# when the image later appears, because the mirror keeps serving the cached
+# miss. tesserix/helivanta's images.yml fast-forwards `deploy` only after BOTH
+# build jobs succeed, so a commit on `deploy` is one whose images are both
+# pullable. That is the entire guarantee this subscription depends on; if that
+# job is ever removed or made conditional, this Warehouse becomes unsafe in the
+# same way.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  # Kargo normalizes durations to Go's canonical form (300s -> 5m0s); use the
+  # normalized form so the Warehouse doesn't read perpetually OutOfSync.
+  interval: 5m0s
+  subscriptions:
+    - git:
+        repoURL: https://github.com/tesserix/helivanta.git
+        branch: deploy
+        commitSelectionStrategy: NewestFromBranch
+        discoveryLimit: 20

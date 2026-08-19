@@ -1,0 +1,70 @@
+---
+# Single prod Stage — auto-promotes Freight from the `services` Warehouse onto
+# BOTH Helivanta Applications in one promotion.
+#
+# The two images are promoted TOGETHER, from one commit, deliberately. ADR-0001
+# states a Helivanta PR spans frontend and backend, so the api and the shell at
+# the same commit are the pair that was built and tested together. Promoting
+# them independently would let a shell that expects a new API route run against
+# an API that does not serve it yet — a skew that exists only because the
+# deployment split them, never because anyone wrote them apart.
+#
+# image.tag is derived from the source commit (NOT imageFrom) because registry
+# tag discovery is unusable at scale — see the warehouse for the pagination
+# incident. tesserix/helivanta's images.yml publishes each build under the FULL
+# 40-char sha as well as `main-<sha7>`, precisely so this expression can name a
+# real tag without doing string surgery on the commit id.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: prod
+  annotations:
+    kargo.akuity.io/color: '#2D4A2B'
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: services
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      vars:
+        - name: argocdRepo
+          value: https://github.com/tesserix/tesserix-k8s.git
+        # Full 40-char sha from tesserix/helivanta's `deploy` HEAD.
+        - name: imageTag
+          value: ${{ commitFrom("https://github.com/tesserix/helivanta.git").ID }}
+
+      steps:
+        # ----- helivanta-api (Go/Gin API; also ships /app/migrate) -----
+        #
+        # The migrate Job runs from this SAME image as an ArgoCD PreSync hook,
+        # so promoting the API tag also promotes the migrations, and they run
+        # before the new pods start. That ordering is load-bearing: #894's
+        # grant migrations had to land before the API that depends on them
+        # could boot.
+        - uses: argocd-update
+          config:
+            apps:
+              - name: helivanta-api
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ vars.imageTag }}
+
+        # ----- helivanta-shell (Next.js shell, serves the branded login) -----
+        - uses: argocd-update
+          config:
+            apps:
+              - name: helivanta-shell
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ vars.imageTag }}
