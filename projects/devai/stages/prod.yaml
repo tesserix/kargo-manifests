@@ -47,6 +47,11 @@ spec:
       steps:
         # ----- devai (ALM pipeline) + its K8s Job runner image -----
         - uses: argocd-update
+          # The Temporal worker-version PostSync hook can outlive Kargo's 5m
+          # default while Argo refreshes health during a rolling deployment.
+          retry:
+            timeout: 15m
+            errorThreshold: 3
           config:
             apps:
               - name: devai-api
