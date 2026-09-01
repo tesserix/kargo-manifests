@@ -11,7 +11,7 @@ spec:
   subscriptions:
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/zitadel-operator
-        imageSelectionStrategy: Lexical
+        imageSelectionStrategy: NewestBuild
         allowTagsRegexes:
           - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
