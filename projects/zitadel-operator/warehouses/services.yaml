@@ -1,0 +1,18 @@
+---
+# GAR is the in-cluster pull-through mirror for GHCR. The immutable main-SHA
+# tags are the only eligible release artifacts; mutable tags are excluded.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s
+  subscriptions:
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/zitadel-operator
+        imageSelectionStrategy: Lexical
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5
