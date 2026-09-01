@@ -21,9 +21,9 @@ spec:
         - name: targetRepo
           value: https://github.com/tesserix/tesserix-k8s.git
         - name: imageRepo
-          value: ghcr.io/tesserix/zitadel-operator
-        - name: freightImageRepo
           value: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/zitadel-operator
+        - name: sourceImageName
+          value: ghcr.io/tesserix/zitadel-operator
       steps:
         - uses: git-clone
           config:
@@ -37,7 +37,9 @@ spec:
             path: ./repo/k8s/operators/zitadel
             images:
               - image: ${{ vars.imageRepo }}
-                tag: ${{ imageFrom(vars.freightImageRepo).Tag }}
+                name: ${{ vars.sourceImageName }}
+                newName: ${{ vars.imageRepo }}
+                tag: ${{ imageFrom(vars.imageRepo).Tag }}
 
         - uses: git-commit
           as: commit
