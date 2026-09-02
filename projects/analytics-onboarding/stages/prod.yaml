@@ -1,0 +1,65 @@
+---
+# Each Freight carries an immutable GAR image tag. This stage writes only that
+# tag into the Kustomize source, commits it to the protected desired-state repo,
+# then asks Argo CD to converge that exact commit.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: prod
+  annotations:
+    kargo.akuity.io/color: '#2E7D32'
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: services
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      vars:
+        - name: targetRepo
+          value: https://github.com/tesserix/tesserix-k8s.git
+        - name: imageRepo
+          value: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/analytics-onboarding-operator
+        - name: sourceImageName
+          value: ghcr.io/tesserix/analytics-onboarding-operator
+      steps:
+        - uses: git-clone
+          config:
+            repoURL: ${{ vars.targetRepo }}
+            checkout:
+              - branch: main
+                path: ./repo
+
+        - uses: kustomize-set-image
+          config:
+            path: ./repo/k8s/operators/analytics-onboarding
+            images:
+              - image: ${{ vars.imageRepo }}
+                name: ${{ vars.sourceImageName }}
+                newName: ${{ vars.imageRepo }}
+                tag: ${{ imageFrom(vars.imageRepo).Tag }}
+
+        - uses: git-commit
+          as: commit
+          config:
+            path: ./repo
+            message: "chore(analytics): kargo promote current freight"
+
+        - uses: git-push
+          config:
+            path: ./repo
+            targetBranch: main
+
+        - uses: argocd-update
+          retry:
+            timeout: 30m
+            errorThreshold: 3
+          config:
+            apps:
+              - name: analytics-onboarding-operator
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.targetRepo }}
+                    desiredRevision: ${{ outputs.commit.commit }}

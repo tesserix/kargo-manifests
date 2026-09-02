@@ -1,0 +1,28 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-analytics-onboarding
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-analytics-onboarding
+  annotations:
+    kargo.akuity.io/description: |
+      Automatically promotes immutable analytics onboarding operator images
+      to the production analytics-operator namespace through GitOps.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-analytics-onboarding
+  namespace: kargo-analytics-onboarding
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
