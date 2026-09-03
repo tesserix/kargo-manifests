@@ -30,6 +30,7 @@ class ObservabilityAppsPromotionTest(unittest.TestCase):
         self.assertEqual(by_name["open-pr"]["uses"], "git-open-pr")
         self.assertEqual(by_name["merge-pr"]["uses"], "git-merge-pr")
         self.assertTrue(by_name["merge-pr"]["config"]["wait"])
+        self.assertEqual(by_name["merge-pr"]["config"]["mergeMethod"], "squash")
         self.assertEqual(
             by_name["argocd-update"]["config"]["apps"][0]["sources"][0][
                 "desiredRevision"
