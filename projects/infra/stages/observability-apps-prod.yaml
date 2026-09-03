@@ -90,7 +90,7 @@ spec:
           config:
             repoURL: https://github.com/tesserix/tesserix-k8s.git
             prNumber: ${{ outputs['open-pr'].pr.id }}
-            mergeMethod: merge
+            mergeMethod: squash
             wait: true
             pollInterval: 15s
 
