@@ -85,6 +85,15 @@ spec:
                       images:
                         - key: image.tag
                           value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/mcp-gateway").Tag }}
+              # kora-mcp: read-only nutrition tenant of the same gateway image.
+              - name: kora-mcp
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/slm-support-platform/mcp-gateway").Tag }}
               # platform-mcp serves tesserix-home. It carries the
               # kargo-support-platform:prod authorized-stage annotation but was
               # never listed here, so it sat on a stale image.tag.
