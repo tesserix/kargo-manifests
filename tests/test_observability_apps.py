@@ -8,13 +8,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ObservabilityAppsPromotionTest(unittest.TestCase):
-    def test_discovery_ignores_broken_historical_manifests(self):
+    def test_discovery_ignores_broken_historical_manifest(self):
         warehouse = yaml.safe_load(
             (ROOT / "projects/infra/warehouses/observability-apps.yaml").read_text()
         )
 
         for subscription in warehouse["spec"]["subscriptions"]:
-            self.assertEqual(subscription["image"]["discoveryLimit"], 1)
+            self.assertEqual(
+                subscription["image"]["ignoreTagsRegexes"],
+                ["^main-a7a5a2d$"],
+            )
 
     def test_promotion_uses_a_protected_branch_pull_request(self):
         stage = yaml.safe_load(
