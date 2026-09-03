@@ -42,14 +42,18 @@ spec:
         imageSelectionStrategy: NewestBuild
         allowTagsRegexes:
           - '^main-[a-f0-9]{7,12}$'
+        # This tag references a deleted manifest and makes NewestBuild fail
+        # before it can select a valid image. New tags remain eligible.
+        ignoreTagsRegexes:
+          - '^main-a7a5a2d$'
         strictSemvers: false
-        # Only the newest immutable tag is needed. Limiting descriptor reads
-        # prevents an old, deleted manifest from blocking all new Freight.
-        discoveryLimit: 1
+        discoveryLimit: 5
     - image:
         repoURL: ghcr.io/tesserix/observability/obs-ui
         imageSelectionStrategy: NewestBuild
         allowTagsRegexes:
           - '^main-[a-f0-9]{7,12}$'
+        ignoreTagsRegexes:
+          - '^main-a7a5a2d$'
         strictSemvers: false
-        discoveryLimit: 1
+        discoveryLimit: 5
