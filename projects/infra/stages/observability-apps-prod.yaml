@@ -69,12 +69,35 @@ spec:
             message: "chore(observability): kargo promote obs-api/obs-ui to current freight"
 
         - uses: git-push
+          as: push
           config:
             path: ./repo
+            generateTargetBranch: true
+
+        # main is protected. Use Kargo's generated promotion branch and merge
+        # through a PR so every automated tag change remains reviewable.
+        - uses: git-open-pr
+          as: open-pr
+          config:
+            repoURL: https://github.com/tesserix/tesserix-k8s.git
+            sourceBranch: ${{ outputs.push.branch }}
+            targetBranch: main
+            title: "chore(observability): promote current images"
+            description: "Automated immutable image promotion from Kargo Freight."
+
+        - uses: git-merge-pr
+          as: merge-pr
+          config:
+            repoURL: https://github.com/tesserix/tesserix-k8s.git
+            prNumber: ${{ outputs['open-pr'].pr.id }}
+            mergeMethod: merge
+            wait: true
+            pollInterval: 15s
 
         # Sync immediately and block on convergence rather than waiting out
         # ArgoCD's poll interval.
         - uses: argocd-update
+          as: argocd-update
           retry:
             timeout: 30m
             errorThreshold: 3
@@ -82,5 +105,11 @@ spec:
             apps:
               - name: obs-api
                 namespace: argocd
+                sources:
+                  - repoURL: https://github.com/tesserix/tesserix-k8s.git
+                    desiredRevision: ${{ outputs['merge-pr'].commit }}
               - name: obs-ui
                 namespace: argocd
+                sources:
+                  - repoURL: https://github.com/tesserix/tesserix-k8s.git
+                    desiredRevision: ${{ outputs['merge-pr'].commit }}

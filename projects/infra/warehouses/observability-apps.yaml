@@ -43,11 +43,13 @@ spec:
         allowTagsRegexes:
           - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
-        discoveryLimit: 5
+        # Only the newest immutable tag is needed. Limiting descriptor reads
+        # prevents an old, deleted manifest from blocking all new Freight.
+        discoveryLimit: 1
     - image:
         repoURL: ghcr.io/tesserix/observability/obs-ui
         imageSelectionStrategy: NewestBuild
         allowTagsRegexes:
           - '^main-[a-f0-9]{7,12}$'
         strictSemvers: false
-        discoveryLimit: 5
+        discoveryLimit: 1
