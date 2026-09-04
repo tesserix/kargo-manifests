@@ -1,0 +1,29 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: prod
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: ocr-service
+      sources:
+        stages:
+          - sandbox
+  promotionTemplate:
+    spec:
+      vars:
+        - name: tag
+          value: ${{ commitFrom("https://github.com/tesserix/document-intelligence.git").ID }}
+      steps:
+        - uses: argocd-update
+          config:
+            apps:
+              - name: document-intelligence-prod
+                namespace: argocd
+                sources:
+                  - repoURL: https://github.com/tesserix/tesserix-k8s.git
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ vars.tag }}
