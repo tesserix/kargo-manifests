@@ -1,0 +1,13 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: ocr-service
+spec:
+  freightCreationPolicy: Automatic
+  interval: 5m0s
+  subscriptions:
+    - git:
+        repoURL: https://github.com/tesserix/document-intelligence.git
+        branch: deploy
+        commitSelectionStrategy: NewestFromBranch
+        discoveryLimit: 20
