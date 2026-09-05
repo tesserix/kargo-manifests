@@ -14,7 +14,7 @@ spec:
     spec:
       vars:
         - name: tag
-          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/document-intelligence/ocr-service").Tag }}
+          value: ${{ commitFrom("https://github.com/tesserix/document-intelligence.git").ID }}
       steps:
         - uses: argocd-update
           config:

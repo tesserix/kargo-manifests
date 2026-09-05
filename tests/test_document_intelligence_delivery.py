@@ -26,9 +26,14 @@ def test_ocr_delivery_discovers_and_promotes_the_gar_mirror() -> None:
         }
     ]
 
-    for environment in ("sandbox", "prod"):
-        stage = yaml.safe_load(
-            (ROOT / f"projects/document-intelligence/stages/{environment}.yaml").read_text()
-        )
-        tag = stage["spec"]["promotionTemplate"]["spec"]["vars"][0]["value"]
-        assert tag == f'${{{{ imageFrom("{IMAGE}").Tag }}}}'
+    sandbox = yaml.safe_load(
+        (ROOT / "projects/document-intelligence/stages/sandbox.yaml").read_text()
+    )
+    assert sandbox["spec"]["promotionTemplate"]["spec"]["vars"][0]["value"] == (
+        f'${{{{ imageFrom("{IMAGE}").Tag }}}}'
+    )
+
+    prod = yaml.safe_load((ROOT / "projects/document-intelligence/stages/prod.yaml").read_text())
+    assert prod["spec"]["promotionTemplate"]["spec"]["vars"][0]["value"] == (
+        '${{ commitFrom("https://github.com/tesserix/document-intelligence.git").ID }}'
+    )
