@@ -6,8 +6,10 @@ spec:
   freightCreationPolicy: Automatic
   interval: 5m0s
   subscriptions:
-    - git:
-        repoURL: https://github.com/tesserix/document-intelligence.git
-        branch: deploy
-        commitSelectionStrategy: NewestFromBranch
-        discoveryLimit: 20
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/document-intelligence/ocr-service
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - '^[a-f0-9]{40}$'
+        strictSemvers: false
+        discoveryLimit: 5
