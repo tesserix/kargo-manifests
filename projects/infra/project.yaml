@@ -16,10 +16,10 @@ metadata:
   name: kargo-infra
   annotations:
     kargo.akuity.io/description: |
-      Cluster infrastructure auto-upgrades. Three warehouses subscribe to
+      Cluster infrastructure auto-upgrades. Two warehouses subscribe to
       the PUBLIC helm chart repositories of every third-party component the
-      cluster runs (istio, observability stack, platform tooling incl.
-      ArgoCD and Kargo themselves). When an upstream publishes a release
+      cluster runs (istio, platform tooling incl. ArgoCD and Kargo
+      themselves). When an upstream publishes a release
       inside the allowed semver range, the matching stage bumps the ArgoCD
       Application's targetRevision and the upgrade rolls out — no human in
       the loop.
@@ -40,13 +40,9 @@ spec:
   promotionPolicies:
     - stage: istio-prod
       autoPromotionEnabled: true
-    - stage: observability-prod
-      autoPromotionEnabled: true
-    # Our own obs-api/obs-ui images, on a separate track from the
-    # third-party charts above so a stuck chart upgrade cannot hold back an
-    # application deploy. See warehouses/observability-apps.yaml.
-    - stage: observability-apps-prod
-      autoPromotionEnabled: true
+    # The observability track (charts + obs-api/obs-ui images) is unlinked:
+    # the whole stack is parked at 0 replicas, so nothing consumed its
+    # promotions. Charts and ArgoCD apps stay in tesserix-k8s to re-link.
     - stage: platform-tools-prod
       autoPromotionEnabled: true
     # OpenBao, on its own track: it is the secret store every ExternalSecret
