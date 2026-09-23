@@ -54,14 +54,35 @@ spec:
       # became healthy on its own minutes later; nothing was broken but the
       # stopwatch.
       #
-      # 15m per step is chosen to cover a slow rollout without masking a
-      # genuinely stuck app: a real failure still errors and still stops the
-      # promotion, which is the behaviour we want to keep.
+      # It happened again on 2026-09-23, for a different reason. A promotion
+      # updates all eight apps at once and kubelet pulls one image at a time
+      # per node, so mark8ly-platform-api's pull reported "6m16s (17m39s
+      # including waiting)" — roughly eleven minutes queued behind the other
+      # seven, then six pulling 31MB. step-7 hit 15m and errored, so step-8
+      # (mark8ly-storefront) was Skipped and stayed on the previous image
+      # until the promotion was re-run by hand. The rollout itself was fine
+      # and completed on its own, exactly as auth-bff had.
+      #
+      # 35m per step, and the number is not arbitrary: it must sit ABOVE the
+      # Deployments' own progressDeadlineSeconds. Kubernetes declaring a
+      # rollout failed is the real detector — Argo then reports the app
+      # Degraded and the step errors on its own, with a diagnosis. A step
+      # timeout firing first tells you only that a stopwatch ran out. With
+      # tesserix-k8s#1068 setting platform-api's deadline to 1800s, 35m
+      # leaves that ordering intact.
+      #
+      # NOTE: the other seven charts still use the Kubernetes default 600s
+      # deadline, so for them a pull this slow still marks the Deployment
+      # failed at 10m and errors the step early, whatever this value says.
+      # They need progressDeadlineSeconds raised too before this timeout
+      # helps them. The durable fix is faster pulls — parallel image pulls
+      # on the node, pre-pulling, or publishing to Artifact Registry instead
+      # of through the ghcr-remote pull-through cache.
       steps:
         # ----- mark8ly-admin -----
         - uses: argocd-update
           retry:
-            timeout: 15m
+            timeout: 35m
           config:
             apps:
               - name: mark8ly-admin
@@ -76,7 +97,7 @@ spec:
         # ----- mark8ly-auth-bff -----
         - uses: argocd-update
           retry:
-            timeout: 15m
+            timeout: 35m
           config:
             apps:
               - name: mark8ly-auth-bff
@@ -91,7 +112,7 @@ spec:
         # ----- mark8ly-marketplace-api (used by both admin + storefront Apps) -----
         - uses: argocd-update
           retry:
-            timeout: 15m
+            timeout: 35m
           config:
             apps:
               - name: mark8ly-marketplace-api-admin
@@ -104,7 +125,7 @@ spec:
                           value: ${{ imageFrom("ghcr.io/tesserix/mark8ly-marketplace-api").Tag }}
         - uses: argocd-update
           retry:
-            timeout: 15m
+            timeout: 35m
           config:
             apps:
               - name: mark8ly-marketplace-api-storefront
@@ -119,7 +140,7 @@ spec:
         # ----- mark8ly-onboarding -----
         - uses: argocd-update
           retry:
-            timeout: 15m
+            timeout: 35m
           config:
             apps:
               - name: mark8ly-onboarding
@@ -134,7 +155,7 @@ spec:
         # ----- mark8ly-otto -----
         - uses: argocd-update
           retry:
-            timeout: 15m
+            timeout: 35m
           config:
             apps:
               - name: mark8ly-otto
@@ -149,7 +170,7 @@ spec:
         # ----- mark8ly-platform-api -----
         - uses: argocd-update
           retry:
-            timeout: 15m
+            timeout: 35m
           config:
             apps:
               - name: mark8ly-platform-api
@@ -164,7 +185,7 @@ spec:
         # ----- mark8ly-storefront -----
         - uses: argocd-update
           retry:
-            timeout: 15m
+            timeout: 35m
           config:
             apps:
               - name: mark8ly-storefront
