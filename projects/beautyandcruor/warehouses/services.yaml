@@ -35,10 +35,26 @@ spec:
     # Chart and Application changes promote too, so a values edit gets the
     # same audit trail as an image bump: which tesserix-k8s commit reached
     # prod, and when.
+    #
+    # includePaths are GLOBS unless prefixed, not regexes. Written as regexes
+    # they match nothing and the Warehouse reports MissingCommits — which
+    # fails the whole Warehouse, images included, so nothing is ever
+    # promoted while the Project still reports "synced and ready for use".
+    #
+    # tesserix-blog carries the regex form and has always discovered commits
+    # only through its one accidentally-literal path
+    # (argocd/prod/apps/blog-app-of-apps.yaml, unescaped). Its
+    # `charts/apps/tesserix-blog/.*` entry has never matched: that directory
+    # changed in 8 of the last commits while the Warehouse discovered 5 —
+    # exactly the count for the literal path alone. Worth fixing there too.
+    #
+    # The directory is given an explicit `regex:` prefix rather than a `**`
+    # glob so the intent cannot be misread again; the two files are literal
+    # and need no prefix.
     - git:
         repoURL: https://github.com/tesserix/tesserix-k8s.git
         branch: main
         includePaths:
-          - charts/apps/beautyandcruor/.*
-          - argocd/prod/apps/beautyandcruor/beautyandcruor\.yaml
-          - argocd/prod/apps/beautyandcruor-app-of-apps\.yaml
+          - regex:^charts/apps/beautyandcruor/
+          - argocd/prod/apps/beautyandcruor/beautyandcruor.yaml
+          - argocd/prod/apps/beautyandcruor-app-of-apps.yaml
