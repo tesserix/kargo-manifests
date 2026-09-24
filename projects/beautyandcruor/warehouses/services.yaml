@@ -1,5 +1,5 @@
 ---
-# Two images, promoted as one.
+# One image subscription, two images deployed.
 #
 # CI builds the nginx image and the enquiry sidecar in the same job from
 # the same commit, tagging both `main-<sha7>`. Subscribing to both in a
@@ -20,13 +20,6 @@ spec:
   subscriptions:
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/beautyandcruor
-        imageSelectionStrategy: NewestBuild
-        allowTagsRegexes:
-          - '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        discoveryLimit: 5
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/beautyandcruor-enquiry
         imageSelectionStrategy: NewestBuild
         allowTagsRegexes:
           - '^main-[a-f0-9]{7,12}$'
