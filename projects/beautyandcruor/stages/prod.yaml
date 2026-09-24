@@ -6,10 +6,10 @@
 #   kargo.akuity.io/authorized-stage: kargo-beautyandcruor:prod
 # without which Kargo refuses to mutate it.
 #
-# Both image tags are written. They come from one Freight and are always
-# the same string, but they are separate Helm keys and both have to be
-# set: leaving the sidecar pinned while the site moved would run the
-# contact endpoint from a different build than the form posting to it.
+# Both Helm keys are written from the SAME image. The sidecar has no
+# subscription of its own — see the warehouse for why — and CI guarantees
+# the two images always carry the same tag, so the site's tag is the
+# sidecar's tag.
 #
 # These parameters override the chart's values.yaml, so after the first
 # promotion the `tag:` fields there stop being what is deployed. They are
@@ -48,4 +48,4 @@ spec:
                         - key: image.tag
                           value: ${{ imageFrom(vars.registry + "/beautyandcruor").Tag }}
                         - key: enquiry.image.tag
-                          value: ${{ imageFrom(vars.registry + "/beautyandcruor-enquiry").Tag }}
+                          value: ${{ imageFrom(vars.registry + "/beautyandcruor").Tag }}
