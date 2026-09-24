@@ -6,10 +6,12 @@
 #   kargo.akuity.io/authorized-stage: kargo-beautyandcruor:prod
 # without which Kargo refuses to mutate it.
 #
-# Both Helm keys are written from the SAME image. The sidecar has no
-# subscription of its own — see the warehouse for why — and CI guarantees
-# the two images always carry the same tag, so the site's tag is the
-# sidecar's tag.
+# Both Helm keys are derived from the SAME commit.
+#
+# CI builds both images from one commit and tags them main-<sha7>, so the
+# commit on `deploy` names both images exactly. Nothing is read from the
+# registry — see the warehouse for why image discovery cannot be trusted
+# through the pull-through mirror.
 #
 # These parameters override the chart's values.yaml, so after the first
 # promotion the `tag:` fields there stop being what is deployed. They are
@@ -32,8 +34,8 @@ spec:
       vars:
         - name: argocdRepo
           value: https://github.com/tesserix/tesserix-k8s.git
-        - name: registry
-          value: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix
+        - name: imageTag
+          value: main-${{ commitFrom("https://github.com/tesserix/beautyandcruor.git").ID[0:7] }}
 
       steps:
         - uses: argocd-update
@@ -46,6 +48,6 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom(vars.registry + "/beautyandcruor").Tag }}
+                          value: ${{ vars.imageTag }}
                         - key: enquiry.image.tag
-                          value: ${{ imageFrom(vars.registry + "/beautyandcruor").Tag }}
+                          value: ${{ vars.imageTag }}
