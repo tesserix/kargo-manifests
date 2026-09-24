@@ -1,0 +1,44 @@
+---
+# Two images, promoted as one.
+#
+# CI builds the nginx image and the enquiry sidecar in the same job from
+# the same commit, tagging both `main-<sha7>`. Subscribing to both in a
+# single Warehouse means one Freight carries both tags, so the pair can
+# never be promoted apart — the site and the endpoint it proxies to are
+# always from the same build.
+#
+# Manifest type: single-arch Docker v2, as with tesserix-blog, so the
+# `platform:` filter is intentionally OMITTED — including it would
+# silently drop every tag (Phase-1 retrospective gotcha #10).
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s
+  subscriptions:
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/beautyandcruor
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/beautyandcruor-enquiry
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - '^main-[a-f0-9]{7,12}$'
+        strictSemvers: false
+        discoveryLimit: 5
+    # Chart and Application changes promote too, so a values edit gets the
+    # same audit trail as an image bump: which tesserix-k8s commit reached
+    # prod, and when.
+    - git:
+        repoURL: https://github.com/tesserix/tesserix-k8s.git
+        branch: main
+        includePaths:
+          - charts/apps/beautyandcruor/.*
+          - argocd/prod/apps/beautyandcruor/beautyandcruor\.yaml
+          - argocd/prod/apps/beautyandcruor-app-of-apps\.yaml

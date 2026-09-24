@@ -1,0 +1,46 @@
+---
+# Kargo enforces: Project.metadata.name == namespace name. So the
+# Project is called `kargo-beautyandcruor` to match the
+# kargo-beautyandcruor namespace pre-created here.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-beautyandcruor
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    # Per Kargo source (api/v1alpha1/labels.go LabelValueTrue), this
+    # label's value MUST be the literal string "true", not the project
+    # name.
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-beautyandcruor
+  annotations:
+    kargo.akuity.io/description: |
+      beautyandcruor — static Next.js portfolio at
+      beautyandcruor.tesserix.app, served by nginx. One-env (prod)
+      deploy into the `tesserix` namespace via the beautyandcruor
+      Argo CD Application.
+
+      Two images, not one: the nginx container serving the export, and
+      the enquiry sidecar that takes the contact form. CI builds and
+      pushes both from the same commit under the same main-<sha7> tag,
+      so they promote together — see the warehouse.
+
+      Until this existed the tag was bumped by hand, which is fine for
+      an engineer deploying and useless for the artist editing her own
+      credits: an edit could sit unseen until someone happened to
+      promote it.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-beautyandcruor
+  namespace: kargo-beautyandcruor
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
