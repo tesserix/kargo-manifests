@@ -14,6 +14,23 @@ apiVersion: kargo.akuity.io/v1alpha1
 kind: Warehouse
 metadata:
   name: services
+  annotations:
+    # Bump this when the only change to this Warehouse is a field argocd-cm
+    # ignores at diff time.
+    #
+    # `resource.customizations.ignoreDifferences.kargo.akuity.io_Warehouse`
+    # excludes .spec.subscriptions[]?.image.discoveryLimit (and interval, and
+    # the strictSemvers/commitSelectionStrategy fields). Sync applies the full
+    # spec — RespectIgnoreDifferences is deliberately absent from the appset —
+    # but a sync only runs when a diff is detected, and a change confined to
+    # an ignored field produces none. The app sits Synced, at the right
+    # revision, with the old value live, indefinitely.
+    #
+    # That is how discoveryLimit: 100 landed in git and never reached the
+    # cluster while production stayed pinned to a stale image. This annotation
+    # is diffed, so touching it makes the sync happen and carries the ignored
+    # fields along with it.
+    beautyandcruor.tesserix.app/spec-revision: "2"
 spec:
   freightCreationPolicy: Automatic
   interval: 300s
