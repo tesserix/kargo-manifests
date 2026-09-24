@@ -1,86 +1,55 @@
 ---
-# One image subscription, two images deployed.
+# Discovery is from the commit graph, not from image tags.
 #
-# CI builds the nginx image and the enquiry sidecar in the same job from
-# the same commit, tagging both `main-<sha7>`. Subscribing to both in a
-# single Warehouse means one Freight carries both tags, so the pair can
-# never be promoted apart — the site and the endpoint it proxies to are
-# always from the same build.
+# NewestBuild cannot work through the ghcr-remote mirror. The mirror is
+# pull-through, so the CREATE_TIME it reports is when it happened to cache a
+# manifest, not when the image was built — three different builds here share a
+# timestamp to the second. Sorting on that is arbitrary, and it promoted a
+# build from the previous evening over one made an hour earlier, rolling the
+# site back past its favicon and its analytics.
 #
-# Manifest type: single-arch Docker v2, as with tesserix-blog, so the
-# `platform:` filter is intentionally OMITTED — including it would
-# silently drop every tag (Phase-1 retrospective gotcha #10).
+# Raising discoveryLimit did not help and could not: the ordering itself is
+# meaningless, not merely truncated. devai reached the same conclusion from
+# the tag-pagination direction and its warehouse says so at length — the git
+# commit graph has a true order and no pagination.
+#
+# The Stage derives main-<sha7> from the commit, which is exactly the tag CI
+# builds.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Warehouse
 metadata:
   name: services
   annotations:
-    # Bump this when the only change to this Warehouse is a field argocd-cm
-    # ignores at diff time.
-    #
-    # `resource.customizations.ignoreDifferences.kargo.akuity.io_Warehouse`
-    # excludes .spec.subscriptions[]?.image.discoveryLimit (and interval, and
-    # the strictSemvers/commitSelectionStrategy fields). Sync applies the full
-    # spec — RespectIgnoreDifferences is deliberately absent from the appset —
-    # but a sync only runs when a diff is detected, and a change confined to
-    # an ignored field produces none. The app sits Synced, at the right
-    # revision, with the old value live, indefinitely.
-    #
-    # That is how discoveryLimit: 100 landed in git and never reached the
-    # cluster while production stayed pinned to a stale image. This annotation
-    # is diffed, so touching it makes the sync happen and carries the ignored
-    # fields along with it.
-    beautyandcruor.tesserix.app/spec-revision: "2"
+    # Bump when the only change here is a field argocd-cm ignores at diff
+    # time (interval, discoveryLimit, strictSemvers, commitSelectionStrategy).
+    # Sync applies the full spec, but no diff means no sync, so such a change
+    # sits in git looking applied and never lands. This is how
+    # discoveryLimit: 100 stayed inert while production ran a stale image.
+    beautyandcruor.tesserix.app/spec-revision: "3"
 spec:
   freightCreationPolicy: Automatic
   interval: 300s
   subscriptions:
-    - image:
-        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/beautyandcruor
-        imageSelectionStrategy: NewestBuild
-        allowTagsRegexes:
-          - '^main-[a-f0-9]{7,12}$'
-        strictSemvers: false
-        # 100, the hard cap, not 5.
-        #
-        # discoveryLimit truncates the registry's tag list BEFORE NewestBuild
-        # sorts it, and that list comes back in arbitrary order. With 16 tags
-        # and a limit of 5, discovery returned fed66af, e7d1527, dde3b9e,
-        # d1f4a6d and cdd7545 — none of them the newest — and NewestBuild
-        # dutifully picked the newest of those. Production rolled backwards to
-        # a build from the previous evening and stayed there.
-        #
-        # This is the failure the devai warehouse documents at length, and it
-        # bit stockpilot and scrapper before that: "NewestBuild then never sees
-        # the newest build and silently promotes the newest of the stale page-1
-        # tags, flapping prod backwards".
-        #
-        # 100 covers every tag this repo has, and branch builds no longer add
-        # any (they carry their own branch prefix now), so the list grows by
-        # one per merge to main. THE CEILING IS REAL THOUGH: at >100 tags this
-        # breaks again exactly as before, and the fix then is the one devai
-        # took — discover from the commit graph, which has a true order and no
-        # pagination, and derive main-<sha7> from it.
-        discoveryLimit: 100
+    # `deploy`, NOT main. CI fast-forwards it only after both images are
+    # pushed, so a commit is never visible here before the tag it implies
+    # exists. Watching main raced the build, and the GAR mirror
+    # negative-caches the resulting 404 into an ImagePullBackOff that does not
+    # recover.
+    #
+    # It also handles the path filter: a docs-only commit builds no image and
+    # never advances deploy, so it is never promoted.
+    - git:
+        repoURL: https://github.com/tesserix/beautyandcruor.git
+        branch: deploy
+        commitSelectionStrategy: NewestFromBranch
+        discoveryLimit: 20
+
     # Chart and Application changes promote too, so a values edit gets the
-    # same audit trail as an image bump: which tesserix-k8s commit reached
-    # prod, and when.
+    # same audit trail as an image bump.
     #
     # includePaths are GLOBS unless prefixed, not regexes. Written as regexes
-    # they match nothing and the Warehouse reports MissingCommits — which
-    # fails the whole Warehouse, images included, so nothing is ever
-    # promoted while the Project still reports "synced and ready for use".
-    #
-    # tesserix-blog carries the regex form and has always discovered commits
-    # only through its one accidentally-literal path
-    # (argocd/prod/apps/blog-app-of-apps.yaml, unescaped). Its
-    # `charts/apps/tesserix-blog/.*` entry has never matched: that directory
-    # changed in 8 of the last commits while the Warehouse discovered 5 —
-    # exactly the count for the literal path alone. Worth fixing there too.
-    #
-    # The directory is given an explicit `regex:` prefix rather than a `**`
-    # glob so the intent cannot be misread again; the two files are literal
-    # and need no prefix.
+    # they match nothing, the Warehouse reports MissingCommits, and that fails
+    # the whole Warehouse — every subscription, not just this one.
     - git:
         repoURL: https://github.com/tesserix/tesserix-k8s.git
         branch: main
