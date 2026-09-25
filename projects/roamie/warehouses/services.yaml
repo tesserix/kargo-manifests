@@ -1,0 +1,25 @@
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s
+  subscriptions:
+    # CI fast-forwards `deploy` only after roamie-api is pushed, so every commit here has its image.
+    - git:
+        repoURL: https://github.com/tesserix/roamie.git
+        branch: deploy
+        commitSelectionStrategy: NewestFromBranch
+        discoveryLimit: 20
+
+    # includePaths are globs unless prefixed with regex:.
+    - git:
+        repoURL: https://github.com/tesserix/tesserix-k8s.git
+        branch: main
+        includePaths:
+          - regex:^charts/apps/roamie-api/
+          - regex:^manifests/roamie-istio/
+          - argocd/prod/apps/roamie/roamie-api.yaml
+          - argocd/prod/apps/roamie-app-of-apps.yaml

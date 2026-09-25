@@ -1,0 +1,29 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-roamie
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-roamie
+  annotations:
+    kargo.akuity.io/description: |
+      Roamie — login-free travel companion API at roamie-api.tesserix.app.
+      One-env (prod) deploy into the `roamie` namespace via the roamie-api
+      Argo CD Application; CI tags the image main-<sha7>.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-roamie
+  namespace: kargo-roamie
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
