@@ -22,6 +22,6 @@ metadata:
 spec:
   promotionPolicies:
     - stage: sandbox
-      autoPromotionEnabled: false
+      autoPromotionEnabled: true
     - stage: prod
-      autoPromotionEnabled: false
+      autoPromotionEnabled: true
