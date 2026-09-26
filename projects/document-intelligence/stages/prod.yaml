@@ -27,3 +27,11 @@ spec:
                       images:
                         - key: image.tag
                           value: ${{ vars.tag }}
+              - name: document-intelligence-roamie-prod
+                namespace: argocd
+                sources:
+                  - repoURL: https://github.com/tesserix/tesserix-k8s.git
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ vars.tag }}
