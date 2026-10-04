@@ -38,4 +38,4 @@ metadata:
 spec:
   promotionPolicies:
     - stage: prod
-      autoPromotionEnabled: true
+      autoPromotionEnabled: false
