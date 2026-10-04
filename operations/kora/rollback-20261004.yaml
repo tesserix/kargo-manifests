@@ -1,0 +1,25 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Promotion
+metadata:
+  name: prod.rollback-20261004-676f58c
+  namespace: kargo-kora
+spec:
+  steps:
+  - config:
+      apps:
+      - name: kora-api
+        namespace: argocd
+        sources:
+        - helm:
+            images:
+            - key: image.tag
+              value: ${{ vars.imageTag }}
+          repoURL: ${{ vars.argocdRepo }}
+    uses: argocd-update
+  vars:
+  - name: argocdRepo
+    value: https://github.com/tesserix/tesserix-k8s.git
+  - name: imageTag
+    value: ${{ commitFrom("https://github.com/tesserix/kora.git").ID }}
+  stage: prod
+  freight: 7d934d7c18ae49354fab42f683c8121155e88136
