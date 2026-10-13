@@ -22,8 +22,21 @@ class OnboardingDeliveryTests(unittest.TestCase):
         apps = promotion['steps'][0]['config']['apps']
         self.assertEqual([app['name'] for app in apps], ['onboarding-service'])
         images = apps[0]['sources'][0]['helm']['images']
-        self.assertEqual({i['key'] for i in images}, {'api.image.tag', 'web.image.tag'})
-        self.assertTrue(all(i['value'] == '${{ vars.imageTag }}' for i in images))
+        self.assertEqual({i['key'] for i in images}, {'api.image.tag', 'web.image.tag', 'api.image.repository', 'web.image.repository'})
+        self.assertTrue(all(i['value'] == '${{ vars.imageTag }}' for i in images if i['key'].endswith('.tag')))
+
+    def test_recovery_registry_is_scoped_to_one_verified_commit(self):
+        stage = yaml.safe_load((ROOT / 'projects/onboarding/stages/prod.yaml').read_text())
+        promotion = stage['spec']['promotionTemplate']['spec']
+        variables = {v['name']: v['value'] for v in promotion['vars']}
+        registry = variables['imageRegistry']
+        self.assertIn('== "ad0f3a5dbd4be1006db0db1988eb3cc976a88c42"', registry)
+        self.assertIn('? "asia-south1-docker.pkg.dev/tesseracthub-480811/global"', registry)
+        self.assertIn(': "asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix"', registry)
+        images = promotion['steps'][0]['config']['apps'][0]['sources'][0]['helm']['images']
+        values = {i['key']: i['value'] for i in images}
+        for name in ['api', 'web']:
+            self.assertEqual(values[f'{name}.image.repository'], '${{ vars.imageRegistry }}/onboarding-' + name)
 
     def test_project_and_stage_share_namespace_and_auto_promotion(self):
         resources = list(yaml.safe_load_all((ROOT / 'projects/onboarding/project.yaml').read_text()))
