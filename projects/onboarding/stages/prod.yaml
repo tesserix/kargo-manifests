@@ -1,0 +1,31 @@
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: prod
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: services
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      vars:
+        - name: imageTag
+          value: ${{ "sha-" + commitFrom("https://github.com/tesserix/onboarding-service.git").ID }}
+      steps:
+        - uses: argocd-update
+          config:
+            apps:
+              - name: onboarding-service
+                namespace: argocd
+                sources:
+                  - repoURL: https://github.com/tesserix/tesserix-k8s.git
+                    helm:
+                      images:
+                        - key: api.image.tag
+                          value: ${{ vars.imageTag }}
+                        - key: web.image.tag
+                          value: ${{ vars.imageTag }}

@@ -1,0 +1,26 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-onboarding
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-onboarding
+  annotations:
+    kargo.akuity.io/description: Onboarding API and console, promoted together from verified CI releases.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-onboarding
+  namespace: kargo-onboarding
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
