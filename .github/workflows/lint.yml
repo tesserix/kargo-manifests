@@ -38,6 +38,8 @@ jobs:
         run: |
           pip install --quiet yamllint==1.35.1
           yamllint -c .yamllint.yaml .
+      - name: Delivery contracts
+        run: python3 -m unittest discover -s tests -v
 
   kubeconform:
     name: kubeconform (Kargo + Argo CD CRDs)
