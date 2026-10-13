@@ -13,6 +13,11 @@ spec:
   promotionTemplate:
     spec:
       vars:
+        - name: imageRegistry
+          value: >-
+            ${{ commitFrom("https://github.com/tesserix/onboarding-service.git").ID == "ad0f3a5dbd4be1006db0db1988eb3cc976a88c42"
+            ? "asia-south1-docker.pkg.dev/tesseracthub-480811/global"
+            : "asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix" }}
         - name: imageTag
           value: ${{ "sha-" + commitFrom("https://github.com/tesserix/onboarding-service.git").ID }}
       steps:
@@ -25,7 +30,11 @@ spec:
                   - repoURL: https://github.com/tesserix/tesserix-k8s.git
                     helm:
                       images:
+                        - key: api.image.repository
+                          value: ${{ vars.imageRegistry }}/onboarding-api
                         - key: api.image.tag
                           value: ${{ vars.imageTag }}
+                        - key: web.image.repository
+                          value: ${{ vars.imageRegistry }}/onboarding-web
                         - key: web.image.tag
                           value: ${{ vars.imageTag }}
