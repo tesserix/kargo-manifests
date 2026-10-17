@@ -34,7 +34,3 @@ spec:
                           value: ${{ vars.imageRegistry }}/onboarding-api
                         - key: api.image.tag
                           value: ${{ vars.imageTag }}
-                        - key: web.image.repository
-                          value: ${{ vars.imageRegistry }}/onboarding-web
-                        - key: web.image.tag
-                          value: ${{ vars.imageTag }}
