@@ -31,3 +31,26 @@ https://github.com/tesserix/tesserix-home/actions/runs/39044852137. GAR verified
 - console: `sha256:4659746aecbeb2e15f64787c58da81f951018ee6fc68c2dd0e7a559f199549e0`
 
 No new registry credentials, IAM roles or public access are needed for this recovery.
+
+## Stale Argo operation recovery
+
+During this release, company had `operationState.phase: Running` from
+`2026-10-17T14:39:15Z`, but no active `operation`; it was Healthy and Synced.
+Argo's supported terminate-operation API confirmed "No operation is in progress".
+That false status blocked Kargo until its first promotion timed out.
+
+Before a status repair, verify the exact application, absence of an active operation,
+Healthy/Synced state, and the stale attempt's start time. Save the old operation state
+privately. Use resourceVersion, phase and start-time JSON patch tests to guard against
+concurrent changes, then mark only the stale attempt Error with the recovery reason
+and finish time. Do not change workload specs or interrupt a real running operation.
+Use the active Kubernetes RBAC boundary; an isolated Argo CLI config avoids reusing an
+expired saved OIDC session. No credential rotation is necessary.
+
+A terminal Kargo promotion is not retried by a refresh annotation. Create a fresh
+Promotion for the same verified Freight using the current Stage's complete promotion
+template, after a server dry-run. Release recovery succeeded as
+`prod.01m5596z4r7550kx1w7czz1zzb.cfd5898` for Freight
+`cfd5898211efe036f314324fcc3a27d7a7c51b89`. Both company and console became
+Healthy/Synced with two ready replicas and their verified GAR digest references.
+The private local status audit is `/private/tmp/questionnaires-company-stale-operation.json`.
