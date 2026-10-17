@@ -2,7 +2,8 @@
 # Single prod Stage — auto-promotes the latest main-<sha7> tags onto the
 # `company`, `console` and `platform-api` Argo CD Applications'
 # spec.source.helm.parameters. All three images come from the same warehouse
-# Freight, so the surfaces always advance to the same commit.
+# Freight; the platform API may be built from its own repository.
+# Web and console use immutable digests, retaining the tag for traceability.
 #
 # ALL THREE Applications carry the annotation
 #   kargo.akuity.io/authorized-stage: kargo-tesserix-home:prod
@@ -37,7 +38,9 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-home").Tag }}
+                          value: >-
+                            ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-home").Tag + "@" +
+                            imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-home").Digest }}
               - name: console
                 namespace: argocd
                 sources:
@@ -47,7 +50,9 @@ spec:
                         - key: image.repository
                           value: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-console
                         - key: image.tag
-                          value: ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-console").Tag }}
+                          value: >-
+                            ${{ imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-console").Tag + "@" +
+                            imageFrom("asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/tesserix-console").Digest }}
               # Platform API — the Go service (ADR-003 D2). Cluster-internal,
               # so unlike its two siblings it carries no hostname parameters.
               - name: platform-api
