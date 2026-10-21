@@ -7,13 +7,13 @@ spec:
   freightCreationPolicy: Automatic
   interval: 300s
   subscriptions:
-    # The mirror lists a tag only once pulled; roamie CI warms it after the published image passes its smoke test.
+    # Roamie CI adds deploy-<sha7> only after the published image passes its smoke test, then pulls it through the mirror.
     # OCI index with an attestation, so platform picks the amd64 image; Kargo still records the index digest.
     - image:
         repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/ghcr-remote/tesserix/roamie-api
         imageSelectionStrategy: NewestBuild
         allowTagsRegexes:
-          - '^main-[a-f0-9]{7,12}$'
+          - '^deploy-[a-f0-9]{7}$'
         platform: linux/amd64
         strictSemvers: false
         discoveryLimit: 5
