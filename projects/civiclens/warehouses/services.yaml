@@ -1,0 +1,28 @@
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: services
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s
+  subscriptions:
+    # deploy-<sha7> is added only after the release image passes the TLS database smoke test.
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/global/civiclens-api
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - '^deploy-[a-f0-9]{7}$'
+        platform: linux/amd64
+        strictSemvers: false
+        discoveryLimit: 5
+
+    # includePaths are globs unless prefixed with regex:.
+    - git:
+        repoURL: https://github.com/tesserix/tesserix-k8s.git
+        branch: main
+        includePaths:
+          - regex:^charts/apps/civiclens-api/
+          - regex:^manifests/civiclens-istio/
+          - argocd/prod/apps/civiclens/civiclens-api.yaml
+          - argocd/prod/apps/civiclens-app-of-apps.yaml

@@ -1,0 +1,29 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kargo-civiclens
+  labels:
+    app.kubernetes.io/part-of: tesseract-platform
+    app.kubernetes.io/component: release
+    kargo.akuity.io/project: "true"
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-civiclens
+  annotations:
+    kargo.akuity.io/description: |
+      CivicLens — civic issue reporting API at civiclns-api.tesserix.app.
+      One-env (prod) deploy into the `civiclens` namespace via the
+      civiclens-api Argo CD Application; CI tags the image deploy-<sha7>.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-civiclens
+  namespace: kargo-civiclens
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: true
