@@ -13,7 +13,6 @@ spec:
         imageSelectionStrategy: NewestBuild
         allowTagsRegexes:
           - '^deploy-[a-f0-9]{7}$'
-        platform: linux/amd64
         strictSemvers: false
         discoveryLimit: 5
 
