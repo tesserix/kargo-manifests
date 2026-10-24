@@ -21,9 +21,11 @@ require an approved data plan, a fresh complete preflight, verified recovery
 coverage and passing source CI. A manual production promotion also requires that
 review; disabling automatic promotion is not permission to bypass it manually.
 
-The Stage now promotes product API, Global API and shell from the same reviewed
-commit in order. The API migration hook and health check must complete before the
-connector and shell advance. The Global API uses the backend image's independent
+The Stage requests product API, Global API and shell updates from the same
+reviewed commit in order. The API owns the migration hook. Promotion success and
+Argo synchronization alone do not prove all updated replicas are healthy; verify
+the migration hook and final readiness of all three workloads before accepting
+the release. The Global API uses the backend image's independent
 `/app/global-api` executable. It has no database migration of its own.
 
 Restore automatic promotion only in a reviewed change removing this hold and
@@ -61,3 +63,64 @@ Automatic promotion remains disabled. The original data blocker is resolved,
 but this note authorizes no other freight and does not change the project's
 promotion policy. A future automatic-promotion change still needs its own reviewed
 source and updated regression test.
+
+
+## MediConnect registrar release — 2026-10-25
+
+The accessibility release in
+[tesserix/helivanta#1320](https://github.com/tesserix/helivanta/pull/1320)
+was separately promoted and verified before registrar development. The hospital
+registrar identity-review flow is in
+[#1321](https://github.com/tesserix/helivanta/pull/1321); the follow-up
+[#1322](https://github.com/tesserix/helivanta/pull/1322) fixes withdrawals handled
+by older writers during a rolling upgrade. The initial registrar Freight was
+intentionally skipped after a red regression reproduced stale review state.
+
+The corrected deployed source is `cccd5ffa47e70983bd9b23dc09e3794185447cf7`.
+Its source tree exactly matches the tested PR. All PR checks passed, including
+Go coverage, web and browser E2E, image scans and secret checks. The complete local
+backend race/coverage gate also passed. Real PostgreSQL/NATS and Global API HTTP
+integration tests cover hospital/tenant isolation, revoked registrar grants,
+self-review denial, stale registration, immutable decisions, outbox/audit failures,
+duplicate and reordered delivery, rolling-upgrade withdrawal recovery, and the
+absence of new consent or clinical grants.
+
+Approved manual Freight: `37e974537cab0831011da3a3f01b842f348678bb`.
+Promotion: `prod.01m5qa01czxa72d3vqt84eenm4.37e9745` (Succeeded).
+The API migration job completed; read-only production inspection confirmed
+`0004_mediconnect`, `0005_mediconnect`, `0005_patientmaster`, and enabled/forced
+RLS on both new review tables. Migration and repeat-application rehearsals used
+production schema only, with synthetic local accounts and no copied patient data.
+
+Final Argo state is Synced/Healthy for API, Global API and shell, with 2/2 ready
+replicas each. Running digests match the published corrected source:
+
+- API and Global API:
+  `sha256:cbbe0fcafd9913eb95e397fa9fd952c84ff4d392e01fbaa39744decf0432a7f6`.
+- Shell:
+  `sha256:90be35181568e9802d498864d3e90b7a432f3a1a9fc74609b390b2d9e68d312b`.
+
+Live probes of all nine MediConnect and three registrar routes returned 401 with
+Global API Via headers for unauthenticated requests carrying forged identity
+headers. The IAM probe also returned 401, an unknown product returned 404, and
+login returned 200. From the shell, direct product API access returned mesh 403;
+Global API access reached the expected 401 authentication gate. These are live
+boundary/readiness checks, not a claim of authenticated clinical testing in
+production; the positive approval/rejection journeys ran against isolated real
+services locally and in CI.
+
+The selected policy is independent hospital registrar evidence review. Patient
+and proxy consent remains separate, and identity verification never grants
+clinical access. Evidence references and reviewer identity remain in patientmaster;
+MediConnect owns only the request and scoped identity-review projection. The
+result consumer can read its original request but cannot modify it. Projection
+repair on reads/retries/result delivery preserves prior withdrawal and emits one
+missing cancellation atomically; it is not a background sweep.
+
+Automatic promotion remains **false**, and `tesserix/helivanta` remains **public**.
+Do not roll back to older review readers/writers while submissions exist without
+a coordinated write hold and reconciliation. Retain migration and audit history.
+Issues #37 and #552 remain open because consent/proxy authority, clinical disclosure
+and broader portal scope are still separate work. Protected local rehearsal and
+verification evidence is under
+`~/.local/state/helivanta/mediconnect-registrar-review-20261025`.
