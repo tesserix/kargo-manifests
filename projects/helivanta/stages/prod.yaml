@@ -1,6 +1,6 @@
 ---
-# Single prod Stage — auto-promotes Freight from the `services` Warehouse onto
-# BOTH Helivanta Applications in one promotion.
+# Single prod Stage — promotes reviewed Freight from the `services` Warehouse
+# onto the product API, Global API and shell in order.
 #
 # The two images are promoted TOGETHER, from one commit, deliberately. ADR-0001
 # states a Helivanta PR spans frontend and backend, so the api and the shell at
@@ -48,6 +48,19 @@ spec:
           config:
             apps:
               - name: helivanta-api
+                namespace: argocd
+                sources:
+                  - repoURL: ${{ vars.argocdRepo }}
+                    helm:
+                      images:
+                        - key: image.tag
+                          value: ${{ vars.imageTag }}
+
+        # The connector must match the reviewed backend before the shell advances.
+        - uses: argocd-update
+          config:
+            apps:
+              - name: helivanta-global-api
                 namespace: argocd
                 sources:
                   - repoURL: ${{ vars.argocdRepo }}

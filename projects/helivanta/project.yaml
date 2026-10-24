@@ -27,9 +27,10 @@ metadata:
   annotations:
     kargo.akuity.io/description: |
       Helivanta — hospital management (Go/Gin API + Next.js shell).
-      Two images, one Stage, promoted together:
+      Two images, three workloads, promoted together:
         * helivanta-api   — the backend, and the migrate binary it ships
                             alongside (one image, two entrypoints).
+        * helivanta-global-api — connector from the same backend image.
         * helivanta-shell — the Next.js shell that serves the branded login.
       One-env (prod) deploy into the `helivanta` namespace under the
       `helivanta` AppProject.
@@ -42,4 +43,5 @@ metadata:
 spec:
   promotionPolicies:
     - stage: prod
-      autoPromotionEnabled: true
+      # See docs/helivanta-release-hold.md before enabling promotion.
+      autoPromotionEnabled: false
