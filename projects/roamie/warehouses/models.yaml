@@ -1,0 +1,27 @@
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: models
+spec:
+  freightCreationPolicy: Automatic
+  interval: 300s
+  subscriptions:
+    # CI adds deploy tags after tests, dependency smoke and image scanning.
+    - image:
+        repoURL: asia-south1-docker.pkg.dev/tesseracthub-480811/global/roamie-seamless
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - '^deploy-[a-f0-9]{7}$'
+        platform: linux/amd64
+        strictSemvers: false
+        discoveryLimit: 5
+
+    # includePaths are globs unless prefixed with regex:.
+    - git:
+        repoURL: https://github.com/tesserix/tesserix-k8s.git
+        branch: main
+        includePaths:
+          - regex:^charts/apps/roamie-seamless/
+          - argocd/prod/apps/roamie/roamie-seamless.yaml
+          - argocd/prod/apps/roamie-app-of-apps.yaml
