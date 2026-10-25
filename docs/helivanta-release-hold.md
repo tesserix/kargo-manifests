@@ -180,3 +180,59 @@ Global API with no-store responses; unknown product returned 404 and login 200.
 From the shell workload, direct owner access returned mesh 403 and Global API
 returned authentication 401. These are production boundary probes; authenticated
 functional/negative journeys ran locally and in CI with synthetic data.
+
+## Privacy casework release — 2026-10-25
+
+[Helivanta #1324](https://github.com/tesserix/helivanta/pull/1324) adds ten
+Global API-routed endpoints for tenant-local officer nomination, acceptance,
+revocation and subject-owned privacy case intake, conversation and review.
+Source `87ef85ae4d230acc14773eb70877ff457208bb39` exactly matches the tested
+PR head `8746498c908b6830893d80fd4943c91a7a744ebf` tree.
+
+Full local backend race/coverage, build, vet, lint, contract checks and all PR
+CI checks passed. Privacy coverage is 83.1%. Tests use real PostgreSQL/NATS,
+owner/runtime database roles and Global API HTTP requests: peer/tenant/admin
+isolation, officer expiry/replacement/revocation, stale nominations and versions,
+concurrent retries, immutable command history and audit rollback. The final
+local regression log is `/tmp/privacy-full-regression-final.log`.
+
+Migration `0001_privacy` was rehearsed on a schema-only production copy with
+101 existing migration identifiers and synthetic data. Apply/repeat and previous
+migrator compatibility passed. All three new tables use forced RLS. The 100k-case
+synthetic query rehearsal used scoped subject/queue indexes; its 0.546ms/0.204ms
+samples are not load or SLO certification. No production patient data was copied.
+
+Exact Freight: `98694b2ada3f9ff524774f08177862314ec5f63e`.
+Published image OCI revision labels match source:
+
+- API and Global API:
+  `sha256:84b7c8d1b6c88451d6d93cc9ca51d1d8c79aa35dfb544806cc3fff000eb25432`.
+- Shell:
+  `sha256:ad0ec103267781695b6fa534b6037d64d0eefa742870cb6a953e4fa3d824ff15`.
+
+This release does not seed production officers or policies. Admin appointment
+management grants no case-read authority; nominees must accept from their own
+verified session. Officer self-adjudication is forbidden. Case `responded` means
+a recorded response, not completed correction, erasure or clinical disclosure.
+PostgreSQL remains authoritative; Valkey remains the shared cache.
+
+No deadline worker or policy extension is included. #66 remains assigned to
+Sam123ben and open for durable deadlines, escalation, wider intake and provider
+notifications. Clinical/proxy authority, owner-authorized record release and
+booking/reminder integrations remain outstanding; #37/#552/#556 remain open.
+No clinical/legal readiness or approved notice content is implied. Automatic
+promotion remains false and the source repository remains public. The migration
+is additive and forward-only; rollback retains case/audit history.
+
+Protected evidence: `~/.local/state/helivanta/privacy-casework-20261025`.
+Main CI run `40154103399` passed, including backend race/coverage, web, e2e,
+scripts and secret scan. Promotion
+`prod.01m5renm8z8qqk9z1x1g11nvtn.98694b2` succeeded. All three workloads
+returned to 2/2 on the exact published digests and Argo Synced/Healthy.
+Migration `0001_privacy` is applied; the table owner, runtime grants and FORCE
+RLS were verified against live metadata. All 31 protected HTTP route probes
+returned 401 through Global API with `no-store`; login returned 200 and unknown
+product 404. Shell-to-owner mesh access returned 403 and shell-to-Global API
+reached the 401 authentication gate. These production probes validate release
+and authentication boundaries; authenticated case transitions were tested in
+isolated local/CI databases, not by inserting production test cases.
