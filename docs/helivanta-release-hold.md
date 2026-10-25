@@ -124,3 +124,59 @@ Issues #37 and #552 remain open because consent/proxy authority, clinical disclo
 and broader portal scope are still separate work. Protected local rehearsal and
 verification evidence is under
 `~/.local/state/helivanta/mediconnect-registrar-review-20261025`.
+
+## MediConnect account-consent release — 2026-10-25
+
+[Helivanta #1323](https://github.com/tesserix/helivanta/pull/1323) adds eight
+Global API-routed endpoints for tenant-reviewed notice publication/read/list/
+retirement and subject-owned consent acceptance/read/list/withdrawal. The source
+is `c722210b52de329d51097ae7a759175b0ccedf0b`; its tree exactly matches the tested
+PR head `e9d0e10231346754a247c3348692e8746c2459cb`.
+
+Full local backend race/coverage and all PR CI checks passed, including real
+PostgreSQL/NATS and Global API HTTP journeys, production-role grants, concurrent
+acceptance/withdrawal, terminal replay, tenant/peer/admin denial, immutable notice
+content, retirement/stale hashes, and audit/outbox rollback. MediConnect coverage
+is 83.2%. The initial PR Go attempt failed installing the linter due to a
+checksum-service TLS timeout; the retry passed without bypassing checks.
+
+Migration `0006_mediconnect` was rehearsed with a schema-only production copy
+and 100 existing migration identifiers, plus synthetic data. Repeat migration
+and previous-migrator compatibility passed. No patient data was copied. A
+100k synthetic receipt query used the scoped page index under app-role forced
+RLS (4 buffer hits, 0.139ms for that sample); this is not load/SLO certification.
+
+Approved exact Freight: `d4fc0515577a95d79d5a9b7b832fa38ff8b1c290`.
+Published OCI revision labels match the source, and the image pipeline passed
+builds, scans, signing and deploy-branch publication. Expected digests:
+
+- API and Global API:
+  `sha256:8ae80f29dd059c85868c0336c5791fdc4dae4c6468fd80d34e0fe0206fb44081`.
+- Shell:
+  `sha256:d8374efe9abdcea2ccc9d6285d72e9fc59b6caf58bf6d3f73896515fbf93518c`.
+
+No production legal text, notice or receipt is seeded. Account purposes remain
+optional; receipts are declarations, not clinical/proxy authority, eligibility
+proof or permission to start processing. Registrar identity approval remains
+separate. Valkey remains the platform cache; PostgreSQL is the receipt authority.
+
+The migration is additive with retained audit/history and no destructive down
+migration. Previous binaries omit the new routes. Any future processing consumer
+must fail closed without current consent, notice and eligibility checks.
+Automatic promotion remains false and the source repository remains public.
+#37, #552 and #556 remain open: clinical/proxy authority and expiry, reviewed
+policy/content, rights/officer workflow and owner-authorized clinical disclosure
+are separate work. UI/mobile and OTP remain excluded from the API-only scope.
+Protected rehearsal and verification evidence is stored at
+`~/.local/state/helivanta/mediconnect-consent-20261025`.
+
+Release verification passed: promotion
+`prod.01m5rb10yyxnwyvv83m34hp077.d4fc051` succeeded, the migration completed,
+and API/Global API/shell are each 2/2 with exact expected live image digests and
+Argo Synced/Healthy. Both new tables have forced RLS, owner `helivanta`, and
+verified `hms_app` SELECT/INSERT/UPDATE privileges. All post-merge CI checks
+passed before promotion. The 21 unauthenticated route probes returned 401 through
+Global API with no-store responses; unknown product returned 404 and login 200.
+From the shell workload, direct owner access returned mesh 403 and Global API
+returned authentication 401. These are production boundary probes; authenticated
+functional/negative journeys ran locally and in CI with synthetic data.
