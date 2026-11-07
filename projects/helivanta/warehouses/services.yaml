@@ -1,6 +1,8 @@
 ---
 # Helivanta Freight = the release/prod commit plus the exact helivanta-api and helivanta-shell
 # digests that tesserix/helivanta's scripts/release-prod.sh verified and tagged release-prod.
+# It also carries the newest tesserix-k8s main commit touching the three promoted charts or their
+# Application values, so a chart or config change ships as new Freight.
 #
 # Images use the Digest strategy: it reads only the release-prod tag, never the tag list, which
 # is past Kargo's 100-tag discovery cap (the DevAI 2026-06-09 backwards-promotion incident).
@@ -32,6 +34,18 @@ spec:
         branch: release/prod
         commitSelectionStrategy: NewestFromBranch
         discoveryLimit: 20
+    - git:
+        repoURL: https://github.com/tesserix/tesserix-k8s.git
+        branch: main
+        commitSelectionStrategy: NewestFromBranch
+        discoveryLimit: 20
+        includePaths:
+          - charts/apps/helivanta-api
+          - charts/apps/helivanta-global-api
+          - charts/apps/helivanta-shell
+          - argocd/prod/apps/helivanta/helivanta-api.yaml
+          - argocd/prod/apps/helivanta/helivanta-global-api.yaml
+          - argocd/prod/apps/helivanta/helivanta-shell.yaml
     - image:
         repoURL: ghcr.io/tesserix/helivanta/helivanta-api
         imageSelectionStrategy: Digest

@@ -7,6 +7,8 @@ ROOT = Path(__file__).resolve().parents[1]
 GIT = "https://github.com/tesserix/helivanta.git"
 API = "ghcr.io/tesserix/helivanta/helivanta-api"
 SHELL = "ghcr.io/tesserix/helivanta/helivanta-shell"
+CHARTS = "https://github.com/tesserix/tesserix-k8s.git"
+PROMOTED = ("helivanta-api", "helivanta-global-api", "helivanta-shell")
 
 
 def load(path):
@@ -35,6 +37,15 @@ class HelivantaDeliveryTests(unittest.TestCase):
                 "branch": "release/prod",
                 "commitSelectionStrategy": "NewestFromBranch",
                 "discoveryLimit": 20,
+            }},
+            # Only the promoted charts and their Application values make chart Freight.
+            {"git": {
+                "repoURL": CHARTS,
+                "branch": "main",
+                "commitSelectionStrategy": "NewestFromBranch",
+                "discoveryLimit": 20,
+                "includePaths": [f"charts/apps/{a}" for a in PROMOTED]
+                + [f"argocd/prod/apps/helivanta/{a}.yaml" for a in PROMOTED],
             }},
             # Digest reads the one release-prod tag, never the >100-tag list.
             {"image": {
@@ -71,6 +82,20 @@ class HelivantaDeliveryTests(unittest.TestCase):
                 variables[f"{name}Tag"],
                 f'${{{{ vars.{name}Digest == "" ? vars.commit : vars.commit + "@" + vars.{name}Digest }}}}',
             )
+
+    def test_each_chart_is_pinned_to_its_freight_commit(self):
+        variables = stage_vars()
+        self.assertEqual(variables["argocdRepo"], CHARTS)
+        self.assertEqual(
+            variables["chartCommit"],
+            '${{ commitFrom(vars.argocdRepo)?.ID ?? "08f5f729cc62e89947dc8c0db08a7e78c8bfe361" }}',
+        )
+        steps = load("projects/helivanta/stages/prod.yaml")["spec"]["promotionTemplate"]["spec"]["steps"]
+        for app in (app for step in steps for app in step["config"]["apps"]):
+            source = app["sources"][0]
+            self.assertEqual(source["repoURL"], "${{ vars.argocdRepo }}")
+            self.assertEqual(source["desiredRevision"], "${{ vars.chartCommit }}")
+            self.assertIs(source["updateTargetRevision"], True)
 
     def test_product_connector_and_shell_promote_the_same_source_in_order(self):
         stage = load("projects/helivanta/stages/prod.yaml")
