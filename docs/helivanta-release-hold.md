@@ -1,9 +1,13 @@
 # Helivanta production promotion hold
 
-Production automatic promotion is disabled while the pending India-only
-migrations are reviewed. Source merges may publish images and advance the deploy
-branch, but must not automatically run these migrations against production.
-The already deployed UI → Global API → product API path remains live.
+**Lifted 2026-11-07.** Production now auto-promotes approved releases from the
+`release/prod` branch; see [Release-branch approval](#release-branch-approval--2026-11-07).
+The sections below are the history of the hold and of each manual promotion.
+
+Production automatic promotion was disabled while the pending India-only
+migrations were reviewed. Source merges could publish images and advance the
+deploy branch, but could not automatically run these migrations against
+production. The already deployed UI → Global API → product API path remained live.
 
 Read-only preflight on 2026-10-24 found 15 incompatible rows across eight tables:
 country policy (1), pharmacy outlets (1), catalogue products (1), supply parties
@@ -236,3 +240,24 @@ product 404. Shell-to-owner mesh access returned 403 and shell-to-Global API
 reached the 401 authentication gate. These production probes validate release
 and authentication boundaries; authenticated case transitions were tested in
 isolated local/CI databases, not by inserting production test cases.
+
+## Release-branch approval — 2026-11-07
+
+The country-data blocker was resolved on 2026-10-25, and every promotion since
+was a reviewed manual one. Approval is now a branch move instead of a manual
+Promotion. Warehouse `services` watches `release/prod`, not `deploy`, and the
+`prod` Stage auto-promotes each new Freight. helivanta's `Release - Production`
+workflow ([`scripts/release-prod.sh`](https://github.com/tesserix/helivanta/blob/main/scripts/release-prod.sh))
+fast-forwards `release/prod` only to a commit that is:
+
+- already on `deploy`, so both images were built, scanned and pushed;
+- not behind the current release;
+- verified by keyless signatures on both images, issued to `images.yml` on `main`.
+
+`deploy` keeps advancing on every green main build, but that no longer changes
+production. Kargo never re-promotes Freight that already has a Promotion for the
+Stage (`regular_stages.go`, v1.10.6), so a manual rollback holds until the next
+release. A failed auto-promotion is likewise not retried. Accepting a release
+still needs the migrate job, the final readiness of all three workloads and the
+public route probes, not Promotion or Argo status alone. The runbook is
+helivanta's `docs/deployment/production-release.md`.
