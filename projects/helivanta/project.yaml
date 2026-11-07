@@ -43,5 +43,5 @@ metadata:
 spec:
   promotionPolicies:
     - stage: prod
-      # See docs/helivanta-release-hold.md before enabling promotion.
-      autoPromotionEnabled: false
+      # The approval is the release/prod branch move; see docs/helivanta-release-hold.md.
+      autoPromotionEnabled: true

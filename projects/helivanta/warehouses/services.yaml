@@ -14,17 +14,12 @@
 # is exactly why this is being set up correctly now rather than after the
 # incident.
 #
-# WHY `deploy` AND NOT `main`.
-# A commit lands on main before its images exist. A Warehouse watching main
-# creates Freight immediately, the Stage writes that tag onto the Applications,
-# the pods pull a tag that has not been pushed yet, and the GAR pull-through
-# mirror NEGATIVE-CACHES the 404 — an ImagePullBackOff that does not recover
-# when the image later appears, because the mirror keeps serving the cached
-# miss. tesserix/helivanta's images.yml fast-forwards `deploy` only after BOTH
-# build jobs succeed, so a commit on `deploy` is one whose images are both
-# pullable. That is the entire guarantee this subscription depends on; if that
-# job is ever removed or made conditional, this Warehouse becomes unsafe in the
-# same way.
+# WHY `release/prod`. Moving it is the production approval: helivanta's
+# Release workflow (scripts/release-prod.sh) fast-forwards it only to a commit
+# already on `deploy` whose two images carry the main images workflow
+# signature. `deploy` itself moves on every green main build, so watching it
+# would ship every merge unreviewed; watching `main` would create Freight before
+# images exist and the GAR mirror would negative-cache the 404.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Warehouse
 metadata:
@@ -37,6 +32,6 @@ spec:
   subscriptions:
     - git:
         repoURL: https://github.com/tesserix/helivanta.git
-        branch: deploy
+        branch: release/prod
         commitSelectionStrategy: NewestFromBranch
         discoveryLimit: 20
