@@ -13,6 +13,8 @@
 # release script verified (revision annotation + main-workflow signature) before
 # tagging it release-prod. The charts render repository:tag, so image.tag is
 # <commit>@<digest>: the commit stays readable, the digest decides the pull.
+#
+# Each chart is pinned to the Freight's tesserix-k8s commit, so a rollback restores the chart too.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
@@ -42,6 +44,9 @@ spec:
           value: '${{ vars.apiDigest == "" ? vars.commit : vars.commit + "@" + vars.apiDigest }}'
         - name: shellTag
           value: '${{ vars.shellDigest == "" ? vars.commit : vars.commit + "@" + vars.shellDigest }}'
+        # Freight from before the tesserix-k8s subscription gets the charts production ran at cutover.
+        - name: chartCommit
+          value: ${{ commitFrom(vars.argocdRepo)?.ID ?? "08f5f729cc62e89947dc8c0db08a7e78c8bfe361" }}
 
       steps:
         # ----- helivanta-api (Go/Gin API; also ships /app/migrate) -----
@@ -58,6 +63,8 @@ spec:
                 namespace: argocd
                 sources:
                   - repoURL: ${{ vars.argocdRepo }}
+                    desiredRevision: ${{ vars.chartCommit }}
+                    updateTargetRevision: true
                     helm:
                       images:
                         - key: image.tag
@@ -71,6 +78,8 @@ spec:
                 namespace: argocd
                 sources:
                   - repoURL: ${{ vars.argocdRepo }}
+                    desiredRevision: ${{ vars.chartCommit }}
+                    updateTargetRevision: true
                     helm:
                       images:
                         - key: image.tag
@@ -84,6 +93,8 @@ spec:
                 namespace: argocd
                 sources:
                   - repoURL: ${{ vars.argocdRepo }}
+                    desiredRevision: ${{ vars.chartCommit }}
+                    updateTargetRevision: true
                     helm:
                       images:
                         - key: image.tag
