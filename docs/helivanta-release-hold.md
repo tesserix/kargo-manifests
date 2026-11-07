@@ -261,3 +261,25 @@ release. A failed auto-promotion is likewise not retried. Accepting a release
 still needs the migrate job, the final readiness of all three workloads and the
 public route probes, not Promotion or Argo status alone. The runbook is
 helivanta's `docs/deployment/production-release.md`.
+
+## Digest-pinned Freight — 2026-11-07
+
+Freight held only the `release/prod` commit, so production pulled both images by
+a commit tag that nothing tied to the digest whose signature had been checked.
+The release script now also checks each image's `org.opencontainers.image.revision`
+annotation, and then points its `release-prod` tag at the verified digest before
+it moves the branch.
+
+Warehouse `services` subscribes to both `release-prod` tags with the `Digest`
+strategy, which reads one tag and never the 100-tag-capped list. Its Freight
+criteria require both revisions to equal the `release/prod` commit, so a moved
+tag or a half-finished release creates no Freight. The Stage renders `image.tag`
+as `<commit>@<digest>`, which the charts' `repository:tag` template turns into a
+pull by digest through the GAR mirror. Freight from before this change has no
+digest and still deploys by commit tag, so it remains a valid rollback target.
+
+The criteria and the Stage vars were exercised against Kargo v1.11.1's own
+expression functions. The criteria cases covered matching, mismatched,
+unannotated, missing and empty revisions, and the Stage cases covered new and
+pre-change Freight. Before this was written, that check caught a typed-nil error
+and an invalid YAML scalar.

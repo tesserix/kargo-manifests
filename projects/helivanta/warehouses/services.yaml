@@ -1,25 +1,15 @@
 ---
-# Helivanta ships TWO images from tesserix/helivanta — helivanta-api and
-# helivanta-shell — both pulled at runtime from the GAR ghcr-remote mirror,
-# never ghcr.io directly.
+# Helivanta Freight = the release/prod commit plus the exact helivanta-api and helivanta-shell
+# digests that tesserix/helivanta's scripts/release-prod.sh verified and tagged release-prod.
 #
-# WHY WE DISCOVER FROM GIT, NOT FROM IMAGE TAGS.
-# `imageSelectionStrategy: NewestBuild` (and Lexical/Digest) all read the
-# registry's tag list. Artifact Registry paginates that list at 100 in an
-# arbitrary order and Kargo's discoveryLimit is hard-capped at 100, so once an
-# image passes 100 tags the newest build stops being visible and Kargo promotes
-# the newest of a stale page — flapping production BACKWARDS. DevAI hit this on
-# 2026-06-09 (projects/devai/warehouses/services.yaml) and Kora was already past
-# the threshold when its project was written. Helivanta is below it today, which
-# is exactly why this is being set up correctly now rather than after the
-# incident.
+# Images use the Digest strategy: it reads only the release-prod tag, never the tag list, which
+# is past Kargo's 100-tag discovery cap (the DevAI 2026-06-09 backwards-promotion incident).
+# Discovery reads ghcr.io directly because the GAR mirror caches moved tags; pods still pull
+# from the mirror, by digest.
 #
-# WHY `release/prod`. Moving it is the production approval: helivanta's
-# Release workflow (scripts/release-prod.sh) fast-forwards it only to a commit
-# already on `deploy` whose two images carry the main images workflow
-# signature. `deploy` itself moves on every green main build, so watching it
-# would ship every merge unreviewed; watching `main` would create Freight before
-# images exist and the GAR mirror would negative-cache the 404.
+# release/prod moves only from an approved Release run, after both tags. The criteria below
+# create Freight only once every image's revision annotation names that commit, so a tag moved
+# without the branch, or a half-finished release, never reaches production.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Warehouse
 metadata:
@@ -27,11 +17,28 @@ metadata:
 spec:
   freightCreationPolicy: Automatic
   # Kargo normalizes durations to Go's canonical form (300s -> 5m0s); use the
-  # normalized form so the Warehouse doesn't read perpetually OutOfSync.
+  # normalized form so the Warehouse doesn't perpetually show OutOfSync.
   interval: 5m0s
+  freightCreationCriteria:
+    # Missing values coalesce to '' so the expression always yields false, never an error.
+    expression: |-
+      let commit = commitFrom('https://github.com/tesserix/helivanta.git')?.ID ?? '';
+      let api = imageFrom('ghcr.io/tesserix/helivanta/helivanta-api')?.Annotations?.['org.opencontainers.image.revision'] ?? '';
+      let shell = imageFrom('ghcr.io/tesserix/helivanta/helivanta-shell')?.Annotations?.['org.opencontainers.image.revision'] ?? '';
+      commit != '' && api == commit && shell == commit
   subscriptions:
     - git:
         repoURL: https://github.com/tesserix/helivanta.git
         branch: release/prod
         commitSelectionStrategy: NewestFromBranch
         discoveryLimit: 20
+    - image:
+        repoURL: ghcr.io/tesserix/helivanta/helivanta-api
+        imageSelectionStrategy: Digest
+        constraint: release-prod
+        discoveryLimit: 1
+    - image:
+        repoURL: ghcr.io/tesserix/helivanta/helivanta-shell
+        imageSelectionStrategy: Digest
+        constraint: release-prod
+        discoveryLimit: 1

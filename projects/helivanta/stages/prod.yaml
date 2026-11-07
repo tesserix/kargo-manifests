@@ -9,11 +9,10 @@
 # an API that does not serve it yet — a skew that exists only because the
 # deployment split them, never because anyone wrote them apart.
 #
-# image.tag is derived from the source commit (NOT imageFrom) because registry
-# tag discovery is unusable at scale — see the warehouse for the pagination
-# incident. tesserix/helivanta's images.yml publishes each build under the FULL
-# 40-char sha as well as `main-<sha7>`, precisely so this expression can name a
-# real tag without doing string surgery on the commit id.
+# Each workload is pinned to its Freight's image digest, the one helivanta's
+# release script verified (revision annotation + main-workflow signature) before
+# tagging it release-prod. The charts render repository:tag, so image.tag is
+# <commit>@<digest>: the commit stays readable, the digest decides the pull.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
@@ -32,9 +31,17 @@ spec:
       vars:
         - name: argocdRepo
           value: https://github.com/tesserix/tesserix-k8s.git
-        # Full 40-char sha from tesserix/helivanta's `deploy` HEAD.
-        - name: imageTag
+        - name: commit
           value: ${{ commitFrom("https://github.com/tesserix/helivanta.git").ID }}
+        # Freight from before the image subscriptions has no digest and keeps deploying by commit tag.
+        - name: apiDigest
+          value: ${{ imageFrom("ghcr.io/tesserix/helivanta/helivanta-api")?.Digest ?? "" }}
+        - name: shellDigest
+          value: ${{ imageFrom("ghcr.io/tesserix/helivanta/helivanta-shell")?.Digest ?? "" }}
+        - name: apiTag
+          value: '${{ vars.apiDigest == "" ? vars.commit : vars.commit + "@" + vars.apiDigest }}'
+        - name: shellTag
+          value: '${{ vars.shellDigest == "" ? vars.commit : vars.commit + "@" + vars.shellDigest }}'
 
       steps:
         # ----- helivanta-api (Go/Gin API; also ships /app/migrate) -----
@@ -54,7 +61,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ vars.imageTag }}
+                          value: ${{ vars.apiTag }}
 
         # The connector must match the reviewed backend before the shell advances.
         - uses: argocd-update
@@ -67,7 +74,7 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ vars.imageTag }}
+                          value: ${{ vars.apiTag }}
 
         # ----- helivanta-shell (Next.js shell, serves the branded login) -----
         - uses: argocd-update
@@ -80,4 +87,4 @@ spec:
                     helm:
                       images:
                         - key: image.tag
-                          value: ${{ vars.imageTag }}
+                          value: ${{ vars.shellTag }}

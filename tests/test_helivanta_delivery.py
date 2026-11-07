@@ -4,6 +4,18 @@ import unittest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+GIT = "https://github.com/tesserix/helivanta.git"
+API = "ghcr.io/tesserix/helivanta/helivanta-api"
+SHELL = "ghcr.io/tesserix/helivanta/helivanta-shell"
+
+
+def load(path):
+    return yaml.safe_load((ROOT / path).read_text())
+
+
+def stage_vars():
+    stage = load("projects/helivanta/stages/prod.yaml")
+    return {v["name"]: v["value"] for v in stage["spec"]["promotionTemplate"]["spec"]["vars"]}
 
 
 class HelivantaDeliveryTests(unittest.TestCase):
@@ -15,29 +27,64 @@ class HelivantaDeliveryTests(unittest.TestCase):
         ])
 
     def test_warehouse_only_sees_approved_releases(self):
-        warehouse = yaml.safe_load((ROOT / "projects/helivanta/warehouses/services.yaml").read_text())
+        warehouse = load("projects/helivanta/warehouses/services.yaml")
         self.assertEqual(warehouse["spec"]["freightCreationPolicy"], "Automatic")
-        self.assertEqual(warehouse["spec"]["subscriptions"], [{"git": {
-            "repoURL": "https://github.com/tesserix/helivanta.git",
-            "branch": "release/prod",
-            "commitSelectionStrategy": "NewestFromBranch",
-            "discoveryLimit": 20,
-        }}])
+        self.assertEqual(warehouse["spec"]["subscriptions"], [
+            {"git": {
+                "repoURL": GIT,
+                "branch": "release/prod",
+                "commitSelectionStrategy": "NewestFromBranch",
+                "discoveryLimit": 20,
+            }},
+            # Digest reads the one release-prod tag, never the >100-tag list.
+            {"image": {
+                "repoURL": API,
+                "imageSelectionStrategy": "Digest",
+                "constraint": "release-prod",
+                "discoveryLimit": 1,
+            }},
+            {"image": {
+                "repoURL": SHELL,
+                "imageSelectionStrategy": "Digest",
+                "constraint": "release-prod",
+                "discoveryLimit": 1,
+            }},
+        ])
 
-    def test_image_tag_is_the_promoted_helivanta_commit(self):
-        stage = yaml.safe_load((ROOT / "projects/helivanta/stages/prod.yaml").read_text())
-        variables = {v["name"]: v["value"] for v in stage["spec"]["promotionTemplate"]["spec"]["vars"]}
-        self.assertEqual(variables["imageTag"],
-                         '${{ commitFrom("https://github.com/tesserix/helivanta.git").ID }}')
+    def test_freight_requires_both_images_built_from_the_release_commit(self):
+        expression = load("projects/helivanta/warehouses/services.yaml")["spec"]["freightCreationCriteria"]["expression"]
+        revision = "?.Annotations?.['org.opencontainers.image.revision'] ?? ''"
+        self.assertEqual(expression.splitlines(), [
+            f"let commit = commitFrom('{GIT}')?.ID ?? '';",
+            f"let api = imageFrom('{API}'){revision};",
+            f"let shell = imageFrom('{SHELL}'){revision};",
+            "commit != '' && api == commit && shell == commit",
+        ])
+
+    def test_each_image_is_pinned_to_its_freight_digest(self):
+        variables = stage_vars()
+        self.assertEqual(variables["commit"], f'${{{{ commitFrom("{GIT}").ID }}}}')
+        self.assertEqual(variables["apiDigest"], f'${{{{ imageFrom("{API}")?.Digest ?? "" }}}}')
+        self.assertEqual(variables["shellDigest"], f'${{{{ imageFrom("{SHELL}")?.Digest ?? "" }}}}')
+        for name in ("api", "shell"):
+            self.assertEqual(
+                variables[f"{name}Tag"],
+                f'${{{{ vars.{name}Digest == "" ? vars.commit : vars.commit + "@" + vars.{name}Digest }}}}',
+            )
 
     def test_product_connector_and_shell_promote_the_same_source_in_order(self):
-        stage = yaml.safe_load((ROOT / "projects/helivanta/stages/prod.yaml").read_text())
+        stage = load("projects/helivanta/stages/prod.yaml")
         steps = stage["spec"]["promotionTemplate"]["spec"]["steps"]
         apps = [app for step in steps for app in step["config"]["apps"]]
-        self.assertEqual([app["name"] for app in apps], [
-            "helivanta-api", "helivanta-global-api", "helivanta-shell",
+        self.assertEqual([
+            (app["name"], app["sources"][0]["helm"]["images"]) for app in apps
+        ], [
+            # The Global API and the migrate hook run from the API image.
+            ("helivanta-api", [{"key": "image.tag", "value": "${{ vars.apiTag }}"}]),
+            ("helivanta-global-api", [{"key": "image.tag", "value": "${{ vars.apiTag }}"}]),
+            ("helivanta-shell", [{"key": "image.tag", "value": "${{ vars.shellTag }}"}]),
         ])
-        for app in apps:
-            self.assertEqual(app["sources"][0]["helm"]["images"], [
-                {"key": "image.tag", "value": "${{ vars.imageTag }}"},
-            ])
+
+
+if __name__ == "__main__":
+    unittest.main()
