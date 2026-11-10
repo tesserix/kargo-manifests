@@ -1,7 +1,6 @@
 ---
-# Each Freight carries an immutable GAR image tag. This stage writes only that
-# tag into the Kustomize source, commits it to the protected desired-state repo,
-# then asks Argo CD to converge that exact commit.
+# Promotions propose the immutable freight digest through a pull request.
+# Argo CD converges only after protected-main review and checks have completed.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
@@ -36,10 +35,9 @@ spec:
           config:
             path: ./repo/k8s/operators/zitadel
             images:
-              - image: ${{ vars.imageRepo }}
-                name: ${{ vars.sourceImageName }}
+              - image: ${{ vars.sourceImageName }}
                 newName: ${{ vars.imageRepo }}
-                tag: ${{ imageFrom(vars.imageRepo).Tag }}
+                digest: ${{ imageFrom(vars.imageRepo).Digest }}
 
         - uses: git-commit
           as: commit
@@ -48,9 +46,30 @@ spec:
             message: "chore(zitadel-operator): kargo promote current freight"
 
         - uses: git-push
+          as: push
           config:
             path: ./repo
+            generateTargetBranch: true
+
+        - uses: git-open-pr
+          as: open-pr
+          config:
+            repoURL: ${{ vars.targetRepo }}
+            sourceBranch: ${{ outputs.push.branch }}
             targetBranch: main
+            title: "chore(identity): promote reviewed operator digest"
+            description: >-
+              Pin the immutable operator digest from Kargo freight.
+              Merge only after repository checks and review; Kargo waits for
+              the merge before verifying the Argo CD rollout.
+
+        - uses: git-wait-for-pr
+          as: wait-for-pr
+          retry:
+            timeout: 24h
+          config:
+            repoURL: ${{ vars.targetRepo }}
+            prNumber: ${{ outputs['open-pr'].pr.id }}
 
         - uses: argocd-update
           retry:
@@ -62,4 +81,4 @@ spec:
                 namespace: argocd
                 sources:
                   - repoURL: ${{ vars.targetRepo }}
-                    desiredRevision: ${{ outputs.commit.commit }}
+                    desiredRevision: ${{ outputs['wait-for-pr'].commit }}
