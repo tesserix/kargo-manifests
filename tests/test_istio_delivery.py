@@ -8,6 +8,24 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class IstioDeliveryTests(unittest.TestCase):
+    def test_each_sync_waits_for_health_before_advancing(self):
+        stage = yaml.safe_load(
+            (ROOT / "projects/infra/stages/istio-prod.yaml").read_text()
+        )
+        steps = stage["spec"]["promotionTemplate"]["spec"]["steps"]
+        for index, step in enumerate(steps):
+            if step["uses"] != "argocd-update":
+                continue
+            self.assertLess(index + 1, len(steps))
+            wait = steps[index + 1]
+            self.assertEqual(wait["uses"], "argocd-wait")
+            self.assertEqual(
+                [app["name"] for app in wait["config"]["apps"]],
+                [app["name"] for app in step["config"]["apps"]],
+            )
+            for app in wait["config"]["apps"]:
+                self.assertEqual(set(app["waitFor"]), {"health", "sync", "operation"})
+
     def test_chart_discovery_and_proposal_use_the_reviewed_release_source(self):
         repo = "https://raw.githubusercontent.com/tesserix/tesserix-k8s/main/charts/thirdparty/istio-release"
         warehouse = yaml.safe_load(
