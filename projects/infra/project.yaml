@@ -39,7 +39,7 @@ metadata:
 spec:
   promotionPolicies:
     - stage: istio-prod
-      autoPromotionEnabled: true
+      autoPromotionEnabled: false
     # The observability track (charts + obs-api/obs-ui images) is unlinked:
     # the whole stack is parked at 0 replicas, so nothing consumed its
     # promotions. Charts and ArgoCD apps stay in tesserix-k8s to re-link.

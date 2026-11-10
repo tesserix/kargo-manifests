@@ -1,7 +1,4 @@
----
-# Aligns the whole mesh to one chart version via Git write-back:
-# every promotion edits argocd/prod/infrastructure/*.yaml and pushes, so
-# upgrades are auditable commits and Git remains the source of truth.
+# Manual promotion proposes a PR; only sync after the reviewed merge.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
@@ -11,96 +8,210 @@ metadata:
     kargo.akuity.io/color: '#476EAE'
 spec:
   requestedFreight:
-    - origin:
-        kind: Warehouse
-        name: istio
-      sources:
-        direct: true
+  - origin:
+      kind: Warehouse
+      name: istio
+    sources:
+      direct: true
   promotionTemplate:
     spec:
       steps:
-        - uses: git-clone
-          config:
-            repoURL: https://github.com/tesserix/tesserix-k8s.git
-            checkout:
-              - branch: main
-                path: ./repo
-        - uses: yaml-update
-          config:
-            path: ./repo/argocd/prod/infrastructure/istio-base.yaml
-            updates:
-              - key: spec.source.targetRevision
-                value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "base").Version }}
-        - uses: yaml-update
-          config:
-            path: ./repo/argocd/prod/infrastructure/istio-cni.yaml
-            updates:
-              - key: spec.source.targetRevision
-                value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "cni").Version }}
-        - uses: yaml-update
-          config:
-            path: ./repo/argocd/prod/infrastructure/istio-istiod.yaml
-            updates:
-              - key: spec.source.targetRevision
-                value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "istiod").Version }}
-        - uses: yaml-update
-          config:
-            path: ./repo/argocd/prod/infrastructure/istio-ztunnel.yaml
-            updates:
-              - key: spec.source.targetRevision
-                value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "ztunnel").Version }}
-        - uses: yaml-update
-          config:
-            path: ./repo/argocd/prod/infrastructure/istio-egress-gateway.yaml
-            updates:
-              - key: spec.source.targetRevision
-                value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
-        - uses: yaml-update
-          config:
-            path: ./repo/argocd/prod/infrastructure/istio-ingress-gateway-internal.yaml
-            updates:
-              - key: spec.source.targetRevision
-                value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
-        - uses: yaml-update
-          config:
-            path: ./repo/argocd/prod/infrastructure/custom-ingress-gateway.yaml
-            updates:
-              - key: spec.source.targetRevision
-                value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
-        - uses: yaml-update
-          config:
-            path: ./repo/argocd/prod/infrastructure/homechef-ingress-gateway.yaml
-            updates:
-              - key: spec.source.targetRevision
-                value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
-        - uses: git-commit
-          config:
+      - uses: git-clone
+        config:
+          repoURL: https://github.com/tesserix/tesserix-k8s.git
+          checkout:
+          - branch: main
             path: ./repo
-            message: "chore(istio): kargo auto-upgrade to current freight"
-        - uses: git-push
-          config:
-            path: ./repo
-        # Trigger immediate syncs and wait for convergence instead of
-        # relying on ArgoCD's poll interval.
-        - uses: argocd-update
-          retry:
-            timeout: 30m
-            errorThreshold: 3
-          config:
-            apps:
-              - name: istio-base
-                namespace: argocd
-              - name: istio-cni
-                namespace: argocd
-              - name: istio-istiod
-                namespace: argocd
-              - name: istio-ztunnel
-                namespace: argocd
-              - name: istio-egress-gateway
-                namespace: argocd
-              - name: istio-ingress-gateway-internal
-                namespace: argocd
-              - name: custom-ingress-gateway
-                namespace: argocd
-              - name: homechef-ingress-gateway
-                namespace: argocd
+      - uses: yaml-update
+        config:
+          path: ./repo/argocd/prod/infrastructure/istio-base.yaml
+          updates:
+          - key: spec.source.targetRevision
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "base").Version }}
+      - uses: yaml-update
+        config:
+          path: ./repo/argocd/prod/infrastructure/istio-cni.yaml
+          updates:
+          - key: spec.source.targetRevision
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "cni").Version }}
+      - uses: yaml-update
+        config:
+          path: ./repo/argocd/prod/infrastructure/istio-istiod.yaml
+          updates:
+          - key: spec.source.targetRevision
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "istiod").Version }}
+      - uses: yaml-update
+        config:
+          path: ./repo/argocd/prod/infrastructure/istio-ztunnel.yaml
+          updates:
+          - key: spec.source.targetRevision
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "ztunnel").Version }}
+      - uses: yaml-update
+        config:
+          path: ./repo/argocd/prod/infrastructure/istio-egress-gateway.yaml
+          updates:
+          - key: spec.source.targetRevision
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+          - key: spec.source.helm.valuesObject.podAnnotations.istioUpgradeVersion
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+      - uses: yaml-update
+        config:
+          path: ./repo/argocd/prod/infrastructure/istio-ingress-gateway-internal.yaml
+          updates:
+          - key: spec.source.targetRevision
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+          - key: spec.source.helm.valuesObject.podAnnotations.istioUpgradeVersion
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+      - uses: yaml-update
+        config:
+          path: ./repo/argocd/prod/infrastructure/custom-ingress-gateway.yaml
+          updates:
+          - key: spec.source.targetRevision
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+          - key: spec.source.helm.valuesObject.podAnnotations.istioUpgradeVersion
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+      - uses: yaml-update
+        config:
+          path: ./repo/argocd/prod/infrastructure/homechef-ingress-gateway.yaml
+          updates:
+          - key: spec.source.targetRevision
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+          - key: spec.source.helm.valuesObject.podAnnotations.istioUpgradeVersion
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+      - uses: yaml-update
+        config:
+          path: ./repo/argocd/prod/infrastructure/zitadel-ingress-gateway.yaml
+          updates:
+          - key: spec.source.targetRevision
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+          - key: spec.source.helm.valuesObject.podAnnotations.istioUpgradeVersion
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+      - uses: yaml-update
+        config:
+          path: ./repo/argocd/prod/infrastructure/istio-ingress-gateway.yaml
+          updates:
+          - key: spec.source.helm.valuesObject.podAnnotations.istioUpgradeVersion
+            value: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+      - uses: git-commit
+        config:
+          path: ./repo
+          message: 'chore(istio): kargo auto-upgrade to current freight'
+      - uses: git-push
+        as: push
+        config:
+          path: ./repo
+          generateTargetBranch: true
+      - uses: git-open-pr
+        as: open-pr
+        config:
+          repoURL: https://github.com/tesserix/tesserix-k8s.git
+          sourceBranch: ${{ outputs.push.branch }}
+          targetBranch: main
+          title: 'chore(istio): propose reviewed mesh upgrade'
+          description: Requires production rollout approval, compatibility review and required checks.
+      - uses: git-wait-for-pr
+        retry:
+          timeout: 168h
+        config:
+          repoURL: https://github.com/tesserix/tesserix-k8s.git
+          prNumber: ${{ outputs['open-pr'].pr.id }}
+        as: wait-for-pr
+      - uses: argocd-update
+        retry:
+          timeout: 30m
+          errorThreshold: 3
+        config:
+          apps:
+          - name: istio-base
+            namespace: argocd
+            sources:
+            - repoURL: https://istio-release.storage.googleapis.com/charts
+              updateTargetRevision: false
+              chart: base
+              desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "base").Version }}
+      - uses: argocd-update
+        retry:
+          timeout: 30m
+          errorThreshold: 3
+        config:
+          apps:
+          - name: istio-istiod
+            namespace: argocd
+            sources:
+            - repoURL: https://istio-release.storage.googleapis.com/charts
+              updateTargetRevision: false
+              chart: istiod
+              desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "istiod").Version }}
+      - uses: argocd-update
+        retry:
+          timeout: 30m
+          errorThreshold: 3
+        config:
+          apps:
+          - name: istio-cni
+            namespace: argocd
+            sources:
+            - repoURL: https://istio-release.storage.googleapis.com/charts
+              updateTargetRevision: false
+              chart: cni
+              desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "cni").Version }}
+      - uses: argocd-update
+        retry:
+          timeout: 30m
+          errorThreshold: 3
+        config:
+          apps:
+          - name: istio-ztunnel
+            namespace: argocd
+            sources:
+            - repoURL: https://istio-release.storage.googleapis.com/charts
+              updateTargetRevision: false
+              chart: ztunnel
+              desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "ztunnel").Version }}
+      - uses: argocd-update
+        retry:
+          timeout: 30m
+          errorThreshold: 3
+        config:
+          apps:
+          - name: istio-egress-gateway
+            namespace: argocd
+            sources:
+            - repoURL: https://istio-release.storage.googleapis.com/charts
+              updateTargetRevision: false
+              chart: gateway
+              desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+          - name: istio-ingress-gateway
+            namespace: argocd
+            sources:
+            - repoURL: https://github.com/tesserix/tesserix-k8s.git
+              updateTargetRevision: false
+              desiredRevision: ${{ outputs['wait-for-pr'].commit }}
+          - name: istio-ingress-gateway-internal
+            namespace: argocd
+            sources:
+            - repoURL: https://istio-release.storage.googleapis.com/charts
+              updateTargetRevision: false
+              chart: gateway
+              desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+          - name: custom-ingress-gateway
+            namespace: argocd
+            sources:
+            - repoURL: https://istio-release.storage.googleapis.com/charts
+              updateTargetRevision: false
+              chart: gateway
+              desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+          - name: homechef-ingress-gateway
+            namespace: argocd
+            sources:
+            - repoURL: https://istio-release.storage.googleapis.com/charts
+              updateTargetRevision: false
+              chart: gateway
+              desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
+          - name: zitadel-ingress-gateway
+            namespace: argocd
+            sources:
+            - repoURL: https://istio-release.storage.googleapis.com/charts
+              updateTargetRevision: false
+              chart: gateway
+              desiredRevision: ${{ chartFrom("https://istio-release.storage.googleapis.com/charts", "gateway").Version }}
