@@ -25,6 +25,7 @@ spec:
           value: ghcr.io/tesserix/zitadel-operator
       steps:
         - uses: git-clone
+          as: clone
           config:
             repoURL: ${{ vars.targetRepo }}
             checkout:
@@ -46,12 +47,14 @@ spec:
             message: "chore(zitadel-operator): kargo promote current freight"
 
         - uses: git-push
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
           as: push
           config:
             path: ./repo
             generateTargetBranch: true
 
         - uses: git-open-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
           as: open-pr
           config:
             repoURL: ${{ vars.targetRepo }}
@@ -64,6 +67,7 @@ spec:
               the merge before verifying the Argo CD rollout.
 
         - uses: git-wait-for-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
           as: wait-for-pr
           retry:
             timeout: 24h
@@ -81,4 +85,4 @@ spec:
                 namespace: argocd
                 sources:
                   - repoURL: ${{ vars.targetRepo }}
-                    desiredRevision: ${{ outputs['wait-for-pr'].commit }}
+                    desiredRevision: "${{ outputs.commit.commit == outputs.clone.commits['./repo'] ? outputs.commit.commit : outputs['wait-for-pr'].commit }}"

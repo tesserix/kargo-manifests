@@ -27,4 +27,14 @@ class ZitadelOperatorPromotionTests(unittest.TestCase):
         self.assertEqual(steps[4]["config"]["sourceBranch"], "${{ outputs.push.branch }}")
         self.assertEqual(steps[5]["config"]["prNumber"], "${{ outputs['open-pr'].pr.id }}")
         source = steps[6]["config"]["apps"][0]["sources"][0]
-        self.assertEqual(source["desiredRevision"], "${{ outputs['wait-for-pr'].commit }}")
+        self.assertIn("outputs['wait-for-pr'].commit", source["desiredRevision"])
+
+    def test_retries_skip_pr_creation_when_the_reviewed_digest_already_matches(self):
+        stage = yaml.safe_load((ROOT / "projects/zitadel-operator/stages/prod.yaml").read_text())
+        steps = stage["spec"]["promotionTemplate"]["spec"]["steps"]
+        self.assertEqual(steps[0]["as"], "clone")
+        condition = "${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}"
+        for step in steps:
+            if step["uses"] in ["git-push", "git-open-pr", "git-wait-for-pr"]:
+                self.assertEqual(step["if"], condition)
+        self.assertIn("outputs.commit.commit", steps[-1]["config"]["apps"][0]["sources"][0]["desiredRevision"])
