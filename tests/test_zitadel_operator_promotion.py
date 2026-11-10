@@ -38,3 +38,9 @@ class ZitadelOperatorPromotionTests(unittest.TestCase):
             if step["uses"] in ["git-push", "git-open-pr", "git-wait-for-pr"]:
                 self.assertEqual(step["if"], condition)
         self.assertIn("outputs.commit.commit", steps[-1]["config"]["apps"][0]["sources"][0]["desiredRevision"])
+
+    def test_operator_keeps_the_reviewed_revision_after_infrastructure_head_moves(self):
+        stage = yaml.safe_load((ROOT / "projects/zitadel-operator/stages/prod.yaml").read_text())
+        steps = stage["spec"]["promotionTemplate"]["spec"]["steps"]
+        source = steps[-1]["config"]["apps"][0]["sources"][0]
+        self.assertTrue(source.get("updateTargetRevision", False))
