@@ -9,22 +9,22 @@ spec:
   interval: 1h0m0s
   subscriptions:
     - chart:
-        repoURL: https://istio-release.storage.googleapis.com/charts
+        repoURL: https://raw.githubusercontent.com/tesserix/tesserix-k8s/main/charts/thirdparty/istio-release
         name: base
         semverConstraint: ">=1.31.4 <1.32.0"
     - chart:
-        repoURL: https://istio-release.storage.googleapis.com/charts
+        repoURL: https://raw.githubusercontent.com/tesserix/tesserix-k8s/main/charts/thirdparty/istio-release
         name: cni
         semverConstraint: ">=1.31.4 <1.32.0"
     - chart:
-        repoURL: https://istio-release.storage.googleapis.com/charts
+        repoURL: https://raw.githubusercontent.com/tesserix/tesserix-k8s/main/charts/thirdparty/istio-release
         name: istiod
         semverConstraint: ">=1.31.4 <1.32.0"
     - chart:
-        repoURL: https://istio-release.storage.googleapis.com/charts
+        repoURL: https://raw.githubusercontent.com/tesserix/tesserix-k8s/main/charts/thirdparty/istio-release
         name: ztunnel
         semverConstraint: ">=1.31.4 <1.32.0"
     - chart:
-        repoURL: https://istio-release.storage.googleapis.com/charts
+        repoURL: https://raw.githubusercontent.com/tesserix/tesserix-k8s/main/charts/thirdparty/istio-release
         name: gateway
         semverConstraint: ">=1.31.4 <1.32.0"

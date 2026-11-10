@@ -8,6 +8,26 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class IstioDeliveryTests(unittest.TestCase):
+    def test_chart_discovery_and_proposal_use_the_reviewed_release_source(self):
+        repo = "https://raw.githubusercontent.com/tesserix/tesserix-k8s/main/charts/thirdparty/istio-release"
+        warehouse = yaml.safe_load(
+            (ROOT / "projects/infra/warehouses/istio.yaml").read_text()
+        )
+        for subscription in warehouse["spec"]["subscriptions"]:
+            self.assertEqual(subscription["chart"]["repoURL"], repo)
+        stage = yaml.safe_load(
+            (ROOT / "projects/infra/stages/istio-prod.yaml").read_text()
+        )
+        for step in stage["spec"]["promotionTemplate"]["spec"]["steps"]:
+            if step["uses"] != "yaml-update" or step["config"]["path"].endswith(
+                "/istio-ingress-gateway.yaml"
+            ):
+                continue
+            updates = {
+                update["key"]: update["value"] for update in step["config"]["updates"]
+            }
+            self.assertEqual(updates["spec.source.repoURL"], repo)
+
     def test_every_gateway_is_updated_and_ambient_components_sync_in_order(self):
         stage = yaml.safe_load(
             (ROOT / "projects/infra/stages/istio-prod.yaml").read_text()
