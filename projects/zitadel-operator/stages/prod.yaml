@@ -85,4 +85,5 @@ spec:
                 namespace: argocd
                 sources:
                   - repoURL: ${{ vars.targetRepo }}
+                    updateTargetRevision: true
                     desiredRevision: "${{ outputs.commit.commit == outputs.clone.commits['./repo'] ? outputs.commit.commit : outputs['wait-for-pr'].commit }}"
