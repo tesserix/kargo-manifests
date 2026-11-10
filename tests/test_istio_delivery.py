@@ -8,6 +8,34 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class IstioDeliveryTests(unittest.TestCase):
+    def test_retry_reuses_reviewed_git_when_freight_already_matches(self):
+        stage = yaml.safe_load(
+            (ROOT / "projects/infra/stages/istio-prod.yaml").read_text()
+        )
+        steps = stage["spec"]["promotionTemplate"]["spec"]["steps"]
+        self.assertEqual(
+            next(s for s in steps if s["uses"] == "git-clone")["as"], "clone"
+        )
+        self.assertEqual(
+            next(s for s in steps if s["uses"] == "git-commit")["as"], "commit"
+        )
+        condition = "${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}"
+        for step in steps:
+            if step["uses"] in ["git-push", "git-open-pr", "git-wait-for-pr"]:
+                self.assertEqual(step.get("if"), condition)
+            if step["uses"] == "argocd-update":
+                self.assertGreaterEqual(step["retry"]["errorThreshold"], 30)
+                for app in step["config"]["apps"]:
+                    if app["name"] == "istio-ingress-gateway":
+                        self.assertIn(
+                            "outputs.commit.commit",
+                            app["sources"][0]["desiredRevision"],
+                        )
+                        self.assertIn(
+                            "outputs['wait-for-pr'].commit",
+                            app["sources"][0]["desiredRevision"],
+                        )
+
     def test_each_sync_waits_for_health_before_advancing(self):
         stage = yaml.safe_load(
             (ROOT / "projects/infra/stages/istio-prod.yaml").read_text()
