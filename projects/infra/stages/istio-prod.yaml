@@ -1,4 +1,4 @@
-# Manual promotion proposes a PR; only sync after the reviewed merge.
+# Manual promotion proposes a PR; sync and health gates precede each component.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
@@ -163,6 +163,18 @@ spec:
               chart: base
               desiredRevision: ${{ chartFrom("https://raw.githubusercontent.com/tesserix/tesserix-k8s/main/charts/thirdparty/istio-release",
                 "base").Version }}
+      - uses: argocd-wait
+        retry:
+          timeout: 30m
+          errorThreshold: 3
+        config:
+          apps:
+          - name: istio-base
+            namespace: argocd
+            waitFor:
+            - health
+            - sync
+            - operation
       - uses: argocd-update
         retry:
           timeout: 30m
@@ -177,6 +189,18 @@ spec:
               chart: istiod
               desiredRevision: ${{ chartFrom("https://raw.githubusercontent.com/tesserix/tesserix-k8s/main/charts/thirdparty/istio-release",
                 "istiod").Version }}
+      - uses: argocd-wait
+        retry:
+          timeout: 30m
+          errorThreshold: 3
+        config:
+          apps:
+          - name: istio-istiod
+            namespace: argocd
+            waitFor:
+            - health
+            - sync
+            - operation
       - uses: argocd-update
         retry:
           timeout: 30m
@@ -191,6 +215,18 @@ spec:
               chart: cni
               desiredRevision: ${{ chartFrom("https://raw.githubusercontent.com/tesserix/tesserix-k8s/main/charts/thirdparty/istio-release",
                 "cni").Version }}
+      - uses: argocd-wait
+        retry:
+          timeout: 30m
+          errorThreshold: 3
+        config:
+          apps:
+          - name: istio-cni
+            namespace: argocd
+            waitFor:
+            - health
+            - sync
+            - operation
       - uses: argocd-update
         retry:
           timeout: 30m
@@ -205,6 +241,18 @@ spec:
               chart: ztunnel
               desiredRevision: ${{ chartFrom("https://raw.githubusercontent.com/tesserix/tesserix-k8s/main/charts/thirdparty/istio-release",
                 "ztunnel").Version }}
+      - uses: argocd-wait
+        retry:
+          timeout: 30m
+          errorThreshold: 3
+        config:
+          apps:
+          - name: istio-ztunnel
+            namespace: argocd
+            waitFor:
+            - health
+            - sync
+            - operation
       - uses: argocd-update
         retry:
           timeout: 30m
@@ -257,3 +305,45 @@ spec:
               chart: gateway
               desiredRevision: ${{ chartFrom("https://raw.githubusercontent.com/tesserix/tesserix-k8s/main/charts/thirdparty/istio-release",
                 "gateway").Version }}
+      - uses: argocd-wait
+        retry:
+          timeout: 30m
+          errorThreshold: 3
+        config:
+          apps:
+          - name: istio-egress-gateway
+            namespace: argocd
+            waitFor:
+            - health
+            - sync
+            - operation
+          - name: istio-ingress-gateway
+            namespace: argocd
+            waitFor:
+            - health
+            - sync
+            - operation
+          - name: istio-ingress-gateway-internal
+            namespace: argocd
+            waitFor:
+            - health
+            - sync
+            - operation
+          - name: custom-ingress-gateway
+            namespace: argocd
+            waitFor:
+            - health
+            - sync
+            - operation
+          - name: homechef-ingress-gateway
+            namespace: argocd
+            waitFor:
+            - health
+            - sync
+            - operation
+          - name: zitadel-ingress-gateway
+            namespace: argocd
+            waitFor:
+            - health
+            - sync
+            - operation
