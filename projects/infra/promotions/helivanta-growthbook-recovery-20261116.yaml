@@ -23,6 +23,8 @@ rules:
   - helivanta-growthbook-prod.bootstrap-20261116
   - helivanta-growthbook-bootstrap-d5a84e8-sync-1794831055
   verbs:
+  - get
+  - patch
   - delete
 - apiGroups:
   - kargo.akuity.io
