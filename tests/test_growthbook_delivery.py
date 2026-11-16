@@ -124,3 +124,15 @@ class HelivantaGrowthBookDeliveryTests(unittest.TestCase):
         self.assertIn('steps:stage.spec.promotionTemplate.spec.steps', script)
         self.assertIn("metadata:{namespace:'kargo-infra',annotations:", script)
         self.assertNotIn('rejectUnauthorized:false', script)
+
+    def test_recovery_is_limited_to_the_two_archived_malformed_records(self):
+        docs = list(yaml.safe_load_all((ROOT / 'projects/infra/promotions/helivanta-growthbook-recovery-20261116.yaml').read_text()))
+        role = next(doc for doc in docs if doc['kind'] == 'Role')
+        self.assertEqual(role['rules'][0]['verbs'], ['delete'])
+        self.assertEqual(role['rules'][0]['resourceNames'], ['helivanta-growthbook-prod.bootstrap-20261116', 'helivanta-growthbook-bootstrap-d5a84e8-sync-1794831055'])
+        self.assertEqual(role['rules'][1]['resourceNames'], ['helivanta-growthbook-prod'])
+        self.assertEqual(role['rules'][1]['verbs'], ['promote'])
+        job = next(doc for doc in docs if doc['kind'] == 'Job')
+        script = job['spec']['template']['spec']['containers'][0]['args'][0]
+        self.assertIn("await request('DELETE','promotions/'+encodeURIComponent(name))", script)
+        self.assertNotIn("request('POST'", script)
