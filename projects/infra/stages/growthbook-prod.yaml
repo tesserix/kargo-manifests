@@ -1,0 +1,98 @@
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: growthbook-prod
+  namespace: kargo-infra
+  annotations:
+    kargo.akuity.io/color: '#2563EB'
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: growthbook
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      steps:
+        - uses: git-clone
+          as: clone
+          config:
+            repoURL: https://github.com/tesserix/tesserix-k8s.git
+            checkout:
+              - branch: main
+                path: ./repo
+        - uses: yaml-update
+          config:
+            path: ./repo/argocd/prod/infrastructure/growthbook.yaml
+            updates:
+              - key: spec.source.helm.valuesObject.image.tag
+                value: ${{ imageFrom("docker.io/growthbook/growthbook").Tag }}
+              - key: spec.source.helm.valuesObject.image.digest
+                value: ${{ imageFrom("docker.io/growthbook/growthbook").Digest }}
+        - uses: yaml-update
+          config:
+            path: ./repo/charts/thirdparty/growthbook/values.yaml
+            updates:
+              - key: image.tag
+                value: ${{ imageFrom("docker.io/growthbook/growthbook").Tag }}
+              - key: image.digest
+                value: ${{ imageFrom("docker.io/growthbook/growthbook").Digest }}
+        - uses: yaml-update
+          config:
+            path: ./repo/charts/thirdparty/growthbook/Chart.yaml
+            updates:
+              - key: appVersion
+                value: ${{ imageFrom("docker.io/growthbook/growthbook").Tag }}
+        - uses: git-commit
+          as: commit
+          config:
+            path: ./repo
+            message: "chore(growthbook): pin verified Kargo freight"
+        - uses: git-push
+          as: push
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            path: ./repo
+            generateTargetBranch: true
+        - uses: git-open-pr
+          as: open-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            repoURL: https://github.com/tesserix/tesserix-k8s.git
+            sourceBranch: ${{ outputs.push.branch }}
+            targetBranch: main
+            title: "chore(growthbook): promote pinned platform-tool release"
+            description: >-
+              Pin the stable GrowthBook version and immutable digest from Kargo
+              Freight. Review release compatibility, backup/restore and SDK
+              verification evidence before merging. No MongoDB or shared feature
+              configuration is changed. Kargo waits for merge and Argo health.
+        - uses: git-wait-for-pr
+          as: wait-for-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            repoURL: https://github.com/tesserix/tesserix-k8s.git
+            prNumber: ${{ outputs['open-pr'].pr.id }}
+        - uses: argocd-update
+          retry:
+            timeout: 30m
+            errorThreshold: 30
+          config:
+            apps:
+              - name: growthbook
+                namespace: argocd
+                sources:
+                  - repoURL: https://github.com/tesserix/tesserix-k8s.git
+                    desiredRevision: >-
+                      ${{ outputs.commit.commit == outputs.clone.commits['./repo'] ? outputs.commit.commit : outputs['wait-for-pr'].commit }}
+        - uses: argocd-wait
+          config:
+            apps:
+              - name: growthbook
+                namespace: argocd
+                waitFor:
+                  - health
+                  - sync
+                  - operation

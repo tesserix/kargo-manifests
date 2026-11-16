@@ -38,6 +38,10 @@ metadata:
   namespace: kargo-infra
 spec:
   promotionPolicies:
+    # Automatically propose supported patches; protected-main PR review remains
+    # the rollout gate for compatibility, SDK verification and recovery evidence.
+    - stage: growthbook-prod
+      autoPromotionEnabled: true
     - stage: istio-prod
       autoPromotionEnabled: false
     # The observability track (charts + obs-api/obs-ui images) is unlinked:
