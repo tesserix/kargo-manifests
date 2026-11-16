@@ -108,3 +108,11 @@ class HelivantaGrowthBookDeliveryTests(unittest.TestCase):
         sync = next(step for step in steps if step['uses'] == 'argocd-update')
         self.assertEqual(sync['config']['apps'][0]['name'], 'helivanta-growthbook')
         self.assertEqual(steps[-1]['config']['apps'][0]['name'], 'helivanta-growthbook')
+
+    def test_initial_promotion_uses_pinned_freight_and_current_stage(self):
+        promotion = resource('projects/infra/promotions/helivanta-growthbook-bootstrap-20261116.yaml')
+        self.assertEqual(promotion['spec']['stage'], 'helivanta-growthbook-prod')
+        self.assertEqual(promotion['spec']['freight'], '8006e0409c0b829cfebbad10e9366273a67b52d3')
+        stage = resource('projects/infra/stages/helivanta-growthbook-prod.yaml')
+        self.assertEqual(promotion['spec']['steps'], stage['spec']['promotionTemplate']['spec']['steps'])
+        self.assertEqual(promotion['metadata']['annotations']['argocd.argoproj.io/sync-options'], 'Prune=false')
