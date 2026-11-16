@@ -28,3 +28,9 @@ Validation: `uv run --with pyyaml python -m unittest discover -s tests -v`, plus
 repository YAML/schema CI. Live verification must record the Warehouse Freight,
 generated PR, merged revision, effective workload digest and Argo health. Do not
 store credentials, SDK payloads or provider backups in this public repository.
+
+Helivanta uses its own `helivanta-growthbook-prod` stage and Argo application.
+It consumes the same supported stable-patch Warehouse, but writes only the
+Helivanta application image tag/digest parameters. Shared GrowthBook settings,
+chart defaults and MongoDB pins cannot be changed by this stage. Protected-main
+PR review and Argo health/sync verification apply independently to each instance.
