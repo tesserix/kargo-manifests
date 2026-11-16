@@ -71,6 +71,7 @@ spec:
                 namespace: argocd
                 sources:
                   - repoURL: https://github.com/tesserix/tesserix-k8s.git
+                    updateTargetRevision: true
                     desiredRevision: >-
                       ${{ outputs.commit.commit == outputs.clone.commits['./repo'] ? outputs.commit.commit : outputs['wait-for-pr'].commit }}
         - uses: argocd-wait

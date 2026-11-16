@@ -198,3 +198,26 @@ class HelivantaPromotionFinalizerTests(unittest.TestCase):
           });
           const writes=calls.filter(row=>row.method==='PATCH');assert.equal(writes.length,2);assert.ok(writes[0].path.endsWith('?dryRun=All'));assert.ok(!writes[1].path.includes('?'));assert.equal(calls.at(-1).method,'GET');
         """,source_file='helivanta-growthbook-finalize-name-20261117.yaml')
+
+
+def test_reconciliation_repromotes_the_verified_patch_without_new_privileges():
+    job = resource("projects/infra/promotions/helivanta-growthbook-reconcile-20261117.yaml")
+    assert job["kind"] == "Job"
+    spec = job["spec"]["template"]["spec"]
+    assert spec["serviceAccountName"] == "helivanta-growthbook-promoter"
+    assert spec["automountServiceAccountToken"] is False
+    container = spec["containers"][0]
+    assert container["image"] == "growthbook/growthbook:5.2.1@sha256:0da8afcb9ed92d8e09abca3ea9d9531e29b7e39b0bccba03d9a3d4cc47f1f60d"
+    script = container["args"][0]
+    assert "20261117-reconcile" in script
+    assert "freight:'4f99919758a9c5e15c3f65bc9f416870dbb062aa'" in script
+    assert "steps:stage.spec.promotionTemplate.spec.steps" in script
+    assert "metadata:{namespace:'kargo-infra',annotations:" in script
+    assert "metadata:{name:" not in script
+    assert "rejectUnauthorized:false" not in script
+
+
+def test_dedicated_provider_pins_the_promoted_chart_revision():
+    stage = resource("projects/infra/stages/helivanta-growthbook-prod.yaml")
+    step = next(row for row in stage["spec"]["promotionTemplate"]["spec"]["steps"] if row["uses"] == "argocd-update")
+    assert step["config"]["apps"][0]["sources"][0]["updateTargetRevision"] is True
