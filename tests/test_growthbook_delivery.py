@@ -109,12 +109,18 @@ class HelivantaGrowthBookDeliveryTests(unittest.TestCase):
         self.assertEqual(sync['config']['apps'][0]['name'], 'helivanta-growthbook')
         self.assertEqual(steps[-1]['config']['apps'][0]['name'], 'helivanta-growthbook')
 
-    def test_initial_promotion_uses_pinned_freight_and_current_stage(self):
-        promotion = resource('projects/infra/promotions/helivanta-growthbook-bootstrap-20261116.yaml')
-        self.assertNotIn('name', promotion['metadata'])
-        self.assertEqual(promotion['metadata']['annotations']['argocd.argoproj.io/hook'], 'Sync')
-        self.assertEqual(promotion['spec']['stage'], 'helivanta-growthbook-prod')
-        self.assertEqual(promotion['spec']['freight'], '8006e0409c0b829cfebbad10e9366273a67b52d3')
-        stage = resource('projects/infra/stages/helivanta-growthbook-prod.yaml')
-        self.assertEqual(promotion['spec']['steps'], stage['spec']['promotionTemplate']['spec']['steps'])
-        self.assertEqual(promotion['metadata']['annotations']['argocd.argoproj.io/sync-options'], 'Prune=false')
+    def test_initial_request_uses_stage_scoped_authority_and_pinned_freight(self):
+        docs = list(yaml.safe_load_all((ROOT / 'projects/infra/promotions/helivanta-growthbook-bootstrap-20261116.yaml').read_text()))
+        role = next(doc for doc in docs if doc['kind'] == 'Role')
+        self.assertEqual(role['rules'][0]['resourceNames'], ['helivanta-growthbook-prod'])
+        self.assertEqual(role['rules'][0]['verbs'], ['get', 'promote'])
+        job = next(doc for doc in docs if doc['kind'] == 'Job')
+        spec = job['spec']['template']['spec']
+        self.assertFalse(spec['automountServiceAccountToken'])
+        container = spec['containers'][0]
+        self.assertIn('@sha256:', container['image'])
+        script = container['args'][0]
+        self.assertIn('8006e0409c0b829cfebbad10e9366273a67b52d3', script)
+        self.assertIn('steps:stage.spec.promotionTemplate.spec.steps', script)
+        self.assertIn("metadata:{namespace:'kargo-infra',annotations:", script)
+        self.assertNotIn('rejectUnauthorized:false', script)
