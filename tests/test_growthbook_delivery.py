@@ -1,4 +1,7 @@
 import unittest
+import base64
+import json
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -128,7 +131,7 @@ class HelivantaGrowthBookDeliveryTests(unittest.TestCase):
     def test_recovery_is_limited_to_the_two_archived_malformed_records(self):
         docs = list(yaml.safe_load_all((ROOT / 'projects/infra/promotions/helivanta-growthbook-recovery-20261116.yaml').read_text()))
         role = next(doc for doc in docs if doc['kind'] == 'Role')
-        self.assertEqual(role['rules'][0]['verbs'], ['delete'])
+        self.assertEqual(role['rules'][0]['verbs'], ['get', 'patch', 'delete'])
         self.assertEqual(role['rules'][0]['resourceNames'], ['helivanta-growthbook-prod.bootstrap-20261116', 'helivanta-growthbook-bootstrap-d5a84e8-sync-1794831055'])
         self.assertEqual(role['rules'][1]['resourceNames'], ['helivanta-growthbook-prod'])
         self.assertEqual(role['rules'][1]['verbs'], ['promote'])
@@ -136,3 +139,43 @@ class HelivantaGrowthBookDeliveryTests(unittest.TestCase):
         script = job['spec']['template']['spec']['containers'][0]['args'][0]
         self.assertIn("await request('DELETE','promotions/'+encodeURIComponent(name))", script)
         self.assertNotIn("request('POST'", script)
+
+
+class HelivantaPromotionFinalizerTests(unittest.TestCase):
+    def run_case(self, assertions):
+        docs = list(yaml.safe_load_all((ROOT / 'projects/infra/promotions/helivanta-growthbook-finalize-20261117.yaml').read_text()))
+        job = next(doc for doc in docs if doc['kind'] == 'Job')
+        source = job['spec']['template']['spec']['containers'][0]['args'][0]
+        module = 'data:text/javascript;base64,' + base64.b64encode(source.encode()).decode()
+        code = "import assert from 'node:assert/strict'; const {finalizeApprovedPromotions,approvedTargets}=await import(" + json.dumps(module) + ");" + assertions
+        result = subprocess.run(['node', '--input-type=module', '-'], input=code, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_removes_only_the_archived_uid_hook_finalizer_and_verifies_deletion(self):
+        self.run_case("""
+          let patched=false;const calls=[];const target=approvedTargets[1];
+          await finalizeApprovedPromotions(async(method,path,body)=>{
+            calls.push({method,path,body});
+            if(path.endsWith(approvedTargets[0].name))return null;
+            assert.ok(path.endsWith(target.name));
+            if(method==='GET')return patched?null:{spec:{stage:'helivanta-growthbook-prod'},metadata:{uid:target.uid,resourceVersion:'17',deletionTimestamp:'2026-11-16T22:12:26Z',finalizers:['argocd.argoproj.io/hook-finalizer']}};
+            assert.equal(method,'PATCH');
+            assert.deepEqual(body,[{op:'test',path:'/metadata/uid',value:target.uid},{op:'test',path:'/metadata/resourceVersion',value:'17'},{op:'test',path:'/metadata/finalizers',value:['argocd.argoproj.io/hook-finalizer']},{op:'replace',path:'/metadata/finalizers',value:[]}]);patched=true;return {};
+          });
+          assert.equal(calls.filter(row=>row.method==='PATCH').length,1);
+          assert.equal(calls.at(-1).method,'GET');
+        """)
+
+    def test_recreated_record_or_unexpected_finalizer_fails_closed(self):
+        self.run_case("""
+          for(const scenario of ['uid','stage','finalizer']) {
+            await assert.rejects(finalizeApprovedPromotions(async(method)=>{
+              assert.equal(method,'GET');return {spec:{stage:scenario==='stage'?'another-stage':'helivanta-growthbook-prod'},metadata:{uid:scenario==='uid'?'another-object':approvedTargets[0].uid,resourceVersion:'17',deletionTimestamp:'now',finalizers:['another-controller/retention']}};
+            }),/Unexpected approved record|Unexpected finalizer/);
+          }
+        """)
+
+    def test_already_removed_records_are_an_idempotent_read_only_success(self):
+        self.run_case("""
+          let count=0;await finalizeApprovedPromotions(async(method)=>{assert.equal(method,'GET');count++;return null;});assert.equal(count,2);
+        """)

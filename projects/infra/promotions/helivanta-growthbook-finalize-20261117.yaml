@@ -1,0 +1,115 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: helivanta-growthbook-promotion-finalize
+  namespace: kargo-infra
+spec:
+  activeDeadlineSeconds: 600
+  backoffLimit: 5
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: 'false'
+    spec:
+      serviceAccountName: helivanta-growthbook-promotion-recovery
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: request
+        image: growthbook/growthbook:5.2.0@sha256:74844e961f4fb65785ddb351bb2417a33a9cbcf0b1aa73774709aee986324afb
+        command:
+        - node
+        - --input-type=module
+        - -e
+        args:
+        - |
+          import https from 'node:https';
+          import {readFileSync} from 'node:fs';
+          export const approvedTargets = [{"name": "helivanta-growthbook-prod.bootstrap-20261116", "uid": "a46059c2-ea00-48d7-a782-e92a807dc809"}, {"name": "helivanta-growthbook-bootstrap-d5a84e8-sync-1794831055", "uid": "80304c61-c710-44a6-b1b4-e87ba4fe5827"}];
+          export async function finalizeApprovedPromotions(request) {
+            for (const target of approvedTargets) {
+              const path='promotions/'+encodeURIComponent(target.name);
+              let row=await request('GET',path,undefined,true);
+              if(!row)continue;
+              const verify=()=>{
+                if(row.metadata.uid!==target.uid||row.spec.stage!=='helivanta-growthbook-prod')throw new Error('Unexpected approved record');
+              };
+              verify();
+              if(!row.metadata.deletionTimestamp) {
+                await request('DELETE',path,{apiVersion:'v1',kind:'DeleteOptions',preconditions:{uid:target.uid,resourceVersion:row.metadata.resourceVersion}});
+                row=await request('GET',path,undefined,true);
+                if(!row)continue;
+                verify();
+              }
+              if(!row.metadata.deletionTimestamp)throw new Error('Approved deletion not pending');
+              const finalizers=row.metadata.finalizers??[];
+              if(finalizers.length) {
+                if(finalizers.length!==1||finalizers[0]!=='argocd.argoproj.io/hook-finalizer')throw new Error('Unexpected finalizer');
+                await request('PATCH',path,[
+                  {op:'test',path:'/metadata/uid',value:target.uid},
+                  {op:'test',path:'/metadata/resourceVersion',value:row.metadata.resourceVersion},
+                  {op:'test',path:'/metadata/finalizers',value:finalizers},
+                  {op:'replace',path:'/metadata/finalizers',value:[]}
+                ]);
+              }
+              if(await request('GET',path,undefined,true))throw new Error('Approved deletion still pending');
+            }
+          }
+          async function run() {
+            const token=readFileSync('/var/run/kubernetes/token','utf8').trim();
+            const ca=readFileSync('/var/run/kubernetes/ca.crt');
+            const base='/apis/kargo.akuity.io/v1alpha1/namespaces/kargo-infra/';
+            const request=(method,path,body,missing=false)=>new Promise((resolve,reject)=>{
+              const contentType=method==='PATCH'?'application/json-patch+json':'application/json';
+              const req=https.request({hostname:'kubernetes.default.svc',path:base+path,method,ca,headers:{Authorization:'Bearer '+token,'Content-Type':contentType},timeout:15000},res=>{
+                let raw='';res.on('data',chunk=>{raw+=chunk;if(raw.length>4000000)res.destroy(new Error('Response bound'));});
+                res.on('error',reject);res.on('end',()=>{
+                  if((missing||method==='DELETE')&&res.statusCode===404)return resolve(null);
+                  if(res.statusCode<200||res.statusCode>=300)return reject(new Error('Kubernetes operation refused'));
+                  try{resolve(JSON.parse(raw||'{}'));}catch{reject(new Error('Invalid response'));}
+                });
+              });
+              req.on('timeout',()=>req.destroy(new Error('Request timeout')));req.on('error',reject);req.end(body?JSON.stringify(body):undefined);
+            });
+            await finalizeApprovedPromotions(request);
+            console.log('Both archived malformed promotion records are absent');
+          }
+          if(process.env.HELIVANTA_FINALIZE_RUN==='true')run().catch(()=>{console.error('Approved promotion finalization failed');process.exitCode=1;});
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        volumeMounts:
+        - name: kubernetes
+          mountPath: /var/run/kubernetes
+          readOnly: true
+        env:
+        - name: HELIVANTA_FINALIZE_RUN
+          value: 'true'
+      volumes:
+      - name: kubernetes
+        projected:
+          defaultMode: 288
+          sources:
+          - serviceAccountToken:
+              path: token
+              expirationSeconds: 600
+          - configMap:
+              name: kube-root-ca.crt
+              items:
+              - key: ca.crt
+                path: ca.crt
