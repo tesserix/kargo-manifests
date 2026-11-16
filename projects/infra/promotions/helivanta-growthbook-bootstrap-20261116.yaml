@@ -1,76 +1,111 @@
-apiVersion: kargo.akuity.io/v1alpha1
-kind: Promotion
+apiVersion: v1
+kind: ServiceAccount
 metadata:
+  name: helivanta-growthbook-promoter
   namespace: kargo-infra
   annotations:
-    argocd.argoproj.io/sync-options: Prune=false
-    argocd.argoproj.io/hook: Sync
-  generateName: helivanta-growthbook-bootstrap-
+    argocd.argoproj.io/sync-wave: '-1'
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: helivanta-growthbook-promoter
+  namespace: kargo-infra
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
+rules:
+  - apiGroups: [kargo.akuity.io]
+    resources: [stages]
+    resourceNames: [helivanta-growthbook-prod]
+    verbs: [get, promote]
+  - apiGroups: [kargo.akuity.io]
+    resources: [promotions]
+    verbs: [list, create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: helivanta-growthbook-promoter
+  namespace: kargo-infra
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: helivanta-growthbook-promoter
+subjects:
+  - kind: ServiceAccount
+    name: helivanta-growthbook-promoter
+    namespace: kargo-infra
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: helivanta-growthbook-promotion-bootstrap
+  namespace: kargo-infra
 spec:
-  stage: helivanta-growthbook-prod
-  freight: 8006e0409c0b829cfebbad10e9366273a67b52d3
-  steps:
-  - uses: git-clone
-    as: clone
-    config:
-      repoURL: https://github.com/tesserix/tesserix-k8s.git
-      checkout:
-      - branch: main
-        path: ./repo
-  - uses: yaml-update
-    config:
-      path: ./repo/argocd/prod/apps/helivanta/helivanta-growthbook.yaml
-      updates:
-      - key: spec.source.helm.parameters.0.value
-        value: ${{ imageFrom("docker.io/growthbook/growthbook").Tag }}
-      - key: spec.source.helm.parameters.1.value
-        value: ${{ imageFrom("docker.io/growthbook/growthbook").Digest }}
-  - uses: git-commit
-    as: commit
-    config:
-      path: ./repo
-      message: 'chore(helivanta-growthbook): pin verified Kargo freight'
-  - uses: git-push
-    as: push
-    if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
-    config:
-      path: ./repo
-      generateTargetBranch: true
-  - uses: git-open-pr
-    as: open-pr
-    if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
-    config:
-      repoURL: https://github.com/tesserix/tesserix-k8s.git
-      sourceBranch: ${{ outputs.push.branch }}
-      targetBranch: main
-      title: 'chore(helivanta-growthbook): promote pinned dedicated provider release'
-      description: Pin the stable GrowthBook version and immutable digest from Kargo Freight. Review release compatibility,
-        backup/restore and SDK verification evidence before merging. No MongoDB or shared feature configuration is changed.
-        Kargo waits for merge and Argo health.
-  - uses: git-wait-for-pr
-    as: wait-for-pr
-    if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
-    config:
-      repoURL: https://github.com/tesserix/tesserix-k8s.git
-      prNumber: ${{ outputs['open-pr'].pr.id }}
-  - uses: argocd-update
-    retry:
-      timeout: 30m
-      errorThreshold: 30
-    config:
-      apps:
-      - name: helivanta-growthbook
-        namespace: argocd
-        sources:
-        - repoURL: https://github.com/tesserix/tesserix-k8s.git
-          desiredRevision: '${{ outputs.commit.commit == outputs.clone.commits[''./repo''] ? outputs.commit.commit : outputs[''wait-for-pr''].commit
-            }}'
-  - uses: argocd-wait
-    config:
-      apps:
-      - name: helivanta-growthbook
-        namespace: argocd
-        waitFor:
-        - health
-        - sync
-        - operation
+  activeDeadlineSeconds: 600
+  backoffLimit: 5
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: 'false'
+    spec:
+      serviceAccountName: helivanta-growthbook-promoter
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: request
+          image: growthbook/growthbook:5.2.0@sha256:74844e961f4fb65785ddb351bb2417a33a9cbcf0b1aa73774709aee986324afb
+          command: [node, --input-type=module, -e]
+          args:
+            - |
+              import https from 'node:https';
+              import {readFileSync} from 'node:fs';
+              const token=readFileSync('/var/run/kubernetes/token','utf8').trim();
+              const ca=readFileSync('/var/run/kubernetes/ca.crt');
+              const base='/apis/kargo.akuity.io/v1alpha1/namespaces/kargo-infra/';
+              const request=(method,path,body)=>new Promise((resolve,reject)=>{
+                const req=https.request({hostname:'kubernetes.default.svc',path:base+path,method,ca,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},timeout:15000},res=>{
+                  let raw='';res.on('data',chunk=>{raw+=chunk;if(raw.length>4000000)res.destroy(new Error('Response bound'));});
+                  res.on('error',reject);res.on('end',()=>{if(res.statusCode<200||res.statusCode>=300)return reject(new Error('Kubernetes operation refused ('+res.statusCode+')'));try{resolve(JSON.parse(raw));}catch{reject(new Error('Invalid response'));}});
+                });
+                req.on('timeout',()=>req.destroy(new Error('Request timeout')));req.on('error',reject);req.end(body?JSON.stringify(body):undefined);
+              });
+              try {
+                const marker='helivanta.tesserix.app/bootstrap';
+                const existing=await request('GET','promotions');
+                if(existing.items.some(row=>row.metadata.annotations?.[marker]==='20261116'&&row.status?.phase!=='Errored'&&row.status?.phase!=='Failed')) {
+                  console.log('Dedicated provider promotion already requested');
+                } else {
+                  const stage=await request('GET','stages/helivanta-growthbook-prod');
+                  await request('POST','promotions',{apiVersion:'kargo.akuity.io/v1alpha1',kind:'Promotion',metadata:{namespace:'kargo-infra',annotations:{[marker]:'20261116'}},spec:{stage:'helivanta-growthbook-prod',freight:'8006e0409c0b829cfebbad10e9366273a67b52d3',steps:stage.spec.promotionTemplate.spec.steps}});
+                  console.log('Dedicated provider promotion requested');
+                }
+              } catch {console.error('Dedicated provider promotion request failed');process.exitCode=1;}
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {memory: 64Mi}
+            limits: {memory: 256Mi}
+          volumeMounts:
+            - {name: kubernetes, mountPath: /var/run/kubernetes, readOnly: true}
+      volumes:
+        - name: kubernetes
+          projected:
+            defaultMode: 0440
+            sources:
+              - serviceAccountToken: {path: token, expirationSeconds: 600}
+              - configMap:
+                  name: kube-root-ca.crt
+                  items:
+                    - {key: ca.crt, path: ca.crt}
