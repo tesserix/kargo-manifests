@@ -67,7 +67,7 @@ spec:
             errorThreshold: 30
           config:
             apps:
-              - name: growthbook
+              - name: helivanta-growthbook
                 namespace: argocd
                 sources:
                   - repoURL: https://github.com/tesserix/tesserix-k8s.git
@@ -76,7 +76,7 @@ spec:
         - uses: argocd-wait
           config:
             apps:
-              - name: growthbook
+              - name: helivanta-growthbook
                 namespace: argocd
                 waitFor:
                   - health
