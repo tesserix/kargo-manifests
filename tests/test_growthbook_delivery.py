@@ -1,5 +1,6 @@
 import unittest
 import base64
+import os
 import json
 import subprocess
 from pathlib import Path
@@ -142,13 +143,13 @@ class HelivantaGrowthBookDeliveryTests(unittest.TestCase):
 
 
 class HelivantaPromotionFinalizerTests(unittest.TestCase):
-    def run_case(self, assertions):
-        docs = list(yaml.safe_load_all((ROOT / 'projects/infra/promotions/helivanta-growthbook-finalize-20261117.yaml').read_text()))
+    def run_case(self, assertions, source_file="helivanta-growthbook-finalize-20261117.yaml"):
+        docs = list(yaml.safe_load_all((ROOT / 'projects/infra/promotions' / source_file).read_text()))
         job = next(doc for doc in docs if doc['kind'] == 'Job')
         source = job['spec']['template']['spec']['containers'][0]['args'][0]
         module = 'data:text/javascript;base64,' + base64.b64encode(source.encode()).decode()
         code = "import assert from 'node:assert/strict'; const {finalizeApprovedPromotions,approvedTargets}=await import(" + json.dumps(module) + ");" + assertions
-        result = subprocess.run(['node', '--input-type=module', '-'], input=code, text=True, capture_output=True)
+        result = subprocess.run(['node', '--input-type=module', '-'], input=code, text=True, capture_output=True, env={**os.environ, 'HELIVANTA_FINALIZE_RUN': 'false'})
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_removes_only_the_archived_uid_hook_finalizer_and_verifies_deletion(self):
@@ -179,3 +180,21 @@ class HelivantaPromotionFinalizerTests(unittest.TestCase):
         self.run_case("""
           let count=0;await finalizeApprovedPromotions(async(method)=>{assert.equal(method,'GET');count++;return null;});assert.equal(count,2);
         """)
+
+
+    def test_name_repair_preflights_the_exact_uid_before_finalization(self):
+        self.run_case("""
+          let patched=false;const calls=[];const target=approvedTargets[1];
+          await finalizeApprovedPromotions(async(method,path,body)=>{
+            calls.push({method,path,body});
+            const key=path.split('?')[0];
+            if(key.endsWith(approvedTargets[0].name))return null;
+            assert.ok(key.endsWith(target.name));
+            if(method==='GET')return patched?null:{spec:{stage:'helivanta-growthbook-prod'},metadata:{name:target.objectName,uid:target.uid,resourceVersion:'17',deletionTimestamp:'now',finalizers:['argocd.argoproj.io/hook-finalizer']}};
+            assert.equal(method,'PATCH');
+            assert.deepEqual(body,[{op:'test',path:'/metadata/uid',value:target.uid},{op:'test',path:'/metadata/resourceVersion',value:'17'},{op:'test',path:'/metadata/finalizers',value:['argocd.argoproj.io/hook-finalizer']},{op:'test',path:'/metadata/name',value:target.objectName},{op:'replace',path:'/metadata/name',value:target.name},{op:'replace',path:'/metadata/finalizers',value:[]}]);
+            if(!path.includes('?dryRun=All'))patched=true;
+            return {};
+          });
+          const writes=calls.filter(row=>row.method==='PATCH');assert.equal(writes.length,2);assert.ok(writes[0].path.endsWith('?dryRun=All'));assert.ok(!writes[1].path.includes('?'));assert.equal(calls.at(-1).method,'GET');
+        """,source_file='helivanta-growthbook-finalize-name-20261117.yaml')
