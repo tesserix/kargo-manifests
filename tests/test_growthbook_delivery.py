@@ -215,3 +215,9 @@ def test_reconciliation_repromotes_the_verified_patch_without_new_privileges():
     assert "metadata:{namespace:'kargo-infra',annotations:" in script
     assert "metadata:{name:" not in script
     assert "rejectUnauthorized:false" not in script
+
+
+def test_dedicated_provider_pins_the_promoted_chart_revision():
+    stage = resource("projects/infra/stages/helivanta-growthbook-prod.yaml")
+    step = next(row for row in stage["spec"]["promotionTemplate"]["spec"]["steps"] if row["uses"] == "argocd-update")
+    assert step["config"]["apps"][0]["sources"][0]["updateTargetRevision"] is True
