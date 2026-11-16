@@ -95,3 +95,16 @@ class GrowthBookDeliveryTests(unittest.TestCase):
         self.assertTrue(policy["autoPromotionEnabled"])
         stage = resource("projects/infra/stages/growthbook-prod.yaml")
         self.assertEqual(len(stage["spec"]["requestedFreight"]), 1)
+
+class HelivantaGrowthBookDeliveryTests(unittest.TestCase):
+    def test_dedicated_stage_cannot_modify_shared_provider_or_chart_defaults(self):
+        stage = resource('projects/infra/stages/helivanta-growthbook-prod.yaml')
+        steps = stage['spec']['promotionTemplate']['spec']['steps']
+        updates = [step['config'] for step in steps if step['uses'] == 'yaml-update']
+        self.assertEqual(len(updates), 1)
+        self.assertEqual(updates[0]['path'], './repo/argocd/prod/apps/helivanta/helivanta-growthbook.yaml')
+        self.assertEqual({row['key'] for row in updates[0]['updates']}, {'spec.source.helm.parameters.0.value', 'spec.source.helm.parameters.1.value'})
+        self.assertEqual(stage['spec']['requestedFreight'][0]['origin']['name'], 'growthbook')
+        sync = next(step for step in steps if step['uses'] == 'argocd-update')
+        self.assertEqual(sync['config']['apps'][0]['name'], 'helivanta-growthbook')
+        self.assertEqual(steps[-1]['config']['apps'][0]['name'], 'helivanta-growthbook')

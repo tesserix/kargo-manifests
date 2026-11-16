@@ -38,6 +38,8 @@ metadata:
   namespace: kargo-infra
 spec:
   promotionPolicies:
+    - stage: helivanta-growthbook-prod
+      autoPromotionEnabled: true
     # Automatically propose supported patches; protected-main PR review remains
     # the rollout gate for compatibility, SDK verification and recovery evidence.
     - stage: growthbook-prod
