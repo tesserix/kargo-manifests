@@ -39,8 +39,8 @@ class GrowthBookDeliveryTests(unittest.TestCase):
         self.assertEqual(
             updates["./repo/argocd/prod/infrastructure/growthbook.yaml"],
             {
-                "spec.source.helm.valuesObject.image.tag": tag,
-                "spec.source.helm.valuesObject.image.digest": digest,
+                "spec.source.helm.parameters.0.value": tag,
+                "spec.source.helm.parameters.1.value": digest,
             },
         )
         self.assertEqual(
