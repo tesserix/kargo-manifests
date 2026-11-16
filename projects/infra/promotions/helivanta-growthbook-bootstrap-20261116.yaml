@@ -1,10 +1,11 @@
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Promotion
 metadata:
-  name: helivanta-growthbook-prod.bootstrap-20261116
   namespace: kargo-infra
   annotations:
     argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/hook: Sync
+  generateName: helivanta-growthbook-bootstrap-
 spec:
   stage: helivanta-growthbook-prod
   freight: 8006e0409c0b829cfebbad10e9366273a67b52d3
