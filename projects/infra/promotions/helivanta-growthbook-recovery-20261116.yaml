@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: helivanta-growthbook-promotion-recovery
+  namespace: kargo-infra
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: helivanta-growthbook-promotion-recovery
+  namespace: kargo-infra
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
+rules:
+- apiGroups:
+  - kargo.akuity.io
+  resources:
+  - promotions
+  resourceNames:
+  - helivanta-growthbook-prod.bootstrap-20261116
+  - helivanta-growthbook-bootstrap-d5a84e8-sync-1794831055
+  verbs:
+  - delete
+- apiGroups:
+  - kargo.akuity.io
+  resources:
+  - stages
+  resourceNames:
+  - helivanta-growthbook-prod
+  verbs:
+  - promote
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: helivanta-growthbook-promotion-recovery
+  namespace: kargo-infra
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: helivanta-growthbook-promotion-recovery
+subjects:
+- kind: ServiceAccount
+  name: helivanta-growthbook-promotion-recovery
+  namespace: kargo-infra
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: helivanta-growthbook-promotion-recovery
+  namespace: kargo-infra
+spec:
+  activeDeadlineSeconds: 600
+  backoffLimit: 5
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: 'false'
+    spec:
+      serviceAccountName: helivanta-growthbook-promotion-recovery
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: request
+        image: growthbook/growthbook:5.2.0@sha256:74844e961f4fb65785ddb351bb2417a33a9cbcf0b1aa73774709aee986324afb
+        command:
+        - node
+        - --input-type=module
+        - -e
+        args:
+        - "import https from 'node:https';\nimport {readFileSync} from 'node:fs';\nconst token=readFileSync('/var/run/kubernetes/token','utf8').trim();\n\
+          const ca=readFileSync('/var/run/kubernetes/ca.crt');\nconst base='/apis/kargo.akuity.io/v1alpha1/namespaces/kargo-infra/';\n\
+          const request=(method,path,body)=>new Promise((resolve,reject)=>{\n  const req=https.request({hostname:'kubernetes.default.svc',path:base+path,method,ca,headers:{Authorization:'Bearer\
+          \ '+token,'Content-Type':'application/json'},timeout:15000},res=>{\n    let raw='';res.on('data',chunk=>{raw+=chunk;if(raw.length>4000000)res.destroy(new\
+          \ Error('Response bound'));});\n    res.on('error',reject);res.on('end',()=>{if(method==='DELETE'&&res.statusCode===404)return\
+          \ resolve({});if(res.statusCode<200||res.statusCode>=300)return reject(new Error('Kubernetes operation refused ('+res.statusCode+')'));try{resolve(JSON.parse(raw));}catch{reject(new\
+          \ Error('Invalid response'));}});\n  });\n  req.on('timeout',()=>req.destroy(new Error('Request timeout')));req.on('error',reject);req.end(body?JSON.stringify(body):undefined);\n\
+          });\ntry {\n  for (const name of ['helivanta-growthbook-prod.bootstrap-20261116','helivanta-growthbook-bootstrap-d5a84e8-sync-1794831055'])\
+          \ {\n    await request('DELETE','promotions/'+encodeURIComponent(name));\n  }\n  console.log('Two archived malformed\
+          \ promotion records removed');\n} catch {console.error('Promotion recovery failed');process.exitCode=1;}\n"
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        volumeMounts:
+        - name: kubernetes
+          mountPath: /var/run/kubernetes
+          readOnly: true
+      volumes:
+      - name: kubernetes
+        projected:
+          defaultMode: 288
+          sources:
+          - serviceAccountToken:
+              path: token
+              expirationSeconds: 600
+          - configMap:
+              name: kube-root-ca.crt
+              items:
+              - key: ca.crt
+                path: ca.crt
