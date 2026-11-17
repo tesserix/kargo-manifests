@@ -1,0 +1,70 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: helivanta-growthbook-console-20261117
+  namespace: kargo-infra
+spec:
+  activeDeadlineSeconds: 600
+  backoffLimit: 5
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: 'false'
+    spec:
+      serviceAccountName: helivanta-growthbook-promoter
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: request
+          image: growthbook/growthbook:5.2.1@sha256:0da8afcb9ed92d8e09abca3ea9d9531e29b7e39b0bccba03d9a3d4cc47f1f60d
+          command: [node, --input-type=module, -e]
+          args:
+            - |
+              import https from 'node:https';
+              import {readFileSync} from 'node:fs';
+              const token=readFileSync('/var/run/kubernetes/token','utf8').trim();
+              const ca=readFileSync('/var/run/kubernetes/ca.crt');
+              const base='/apis/kargo.akuity.io/v1alpha1/namespaces/kargo-infra/';
+              const request=(method,path,body)=>new Promise((resolve,reject)=>{
+                const req=https.request({hostname:'kubernetes.default.svc',path:base+path,method,ca,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},timeout:15000},res=>{
+                  let raw='';res.on('data',chunk=>{raw+=chunk;if(raw.length>4000000)res.destroy(new Error('Response bound'));});
+                  res.on('error',reject);res.on('end',()=>{if(res.statusCode<200||res.statusCode>=300)return reject(new Error('Kubernetes operation refused ('+res.statusCode+')'));try{resolve(JSON.parse(raw));}catch{reject(new Error('Invalid response'));}});
+                });
+                req.on('timeout',()=>req.destroy(new Error('Request timeout')));req.on('error',reject);req.end(body?JSON.stringify(body):undefined);
+              });
+              try {
+                const marker='helivanta.tesserix.app/bootstrap';
+                const existing=await request('GET','promotions');
+                if(existing.items.some(row=>row.metadata.annotations?.[marker]==='20261117-console'&&row.status?.phase!=='Errored'&&row.status?.phase!=='Failed')) {
+                  console.log('Dedicated provider promotion already requested');
+                } else {
+                  const stage=await request('GET','stages/helivanta-growthbook-prod');
+                  await request('POST','promotions',{apiVersion:'kargo.akuity.io/v1alpha1',kind:'Promotion',metadata:{namespace:'kargo-infra',annotations:{[marker]:'20261117-console'}},spec:{stage:'helivanta-growthbook-prod',freight:'4f99919758a9c5e15c3f65bc9f416870dbb062aa',steps:stage.spec.promotionTemplate.spec.steps}});
+                  console.log('Dedicated provider promotion requested');
+                }
+              } catch {console.error('Dedicated provider promotion request failed');process.exitCode=1;}
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {memory: 64Mi}
+            limits: {memory: 256Mi}
+          volumeMounts:
+            - {name: kubernetes, mountPath: /var/run/kubernetes, readOnly: true}
+      volumes:
+        - name: kubernetes
+          projected:
+            defaultMode: 0440
+            sources:
+              - serviceAccountToken: {path: token, expirationSeconds: 600}
+              - configMap:
+                  name: kube-root-ca.crt
+                  items:
+                    - {key: ca.crt, path: ca.crt}
