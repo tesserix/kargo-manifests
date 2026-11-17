@@ -221,3 +221,42 @@ def test_dedicated_provider_pins_the_promoted_chart_revision():
     stage = resource("projects/infra/stages/helivanta-growthbook-prod.yaml")
     step = next(row for row in stage["spec"]["promotionTemplate"]["spec"]["steps"] if row["uses"] == "argocd-update")
     assert step["config"]["apps"][0]["sources"][0]["updateTargetRevision"] is True
+
+class HelivantaCataloguePromotionTests(unittest.TestCase):
+    def test_actual_job_requests_only_verified_freight_and_deduplicates(self):
+        job = resource('projects/infra/promotions/helivanta-growthbook-catalogue-20261117.yaml')
+        spec = job['spec']['template']['spec']
+        self.assertEqual(spec['serviceAccountName'], 'helivanta-growthbook-promoter')
+        self.assertFalse(spec['automountServiceAccountToken'])
+        source = spec['containers'][0]['args'][0]
+        module = 'data:text/javascript;base64,' + base64.b64encode(source.encode()).decode()
+        for duplicate in (False, True):
+            code = '''
+import assert from 'node:assert/strict';
+import https from 'node:https';
+import fs from 'node:fs';
+import {EventEmitter} from 'node:events';
+import {syncBuiltinESMExports} from 'node:module';
+const calls=[]; const duplicate=DUPLICATE;
+fs.readFileSync=()=> 'synthetic-only';syncBuiltinESMExports();
+https.request=(options, callback)=>{
+ assert.equal(options.hostname,'kubernetes.default.svc');
+ const request=new EventEmitter();
+ request.end=payload=>queueMicrotask(()=>{
+  const body=payload?JSON.parse(payload):undefined;
+  calls.push({method:options.method,path:options.path,body});
+  let result={};
+  if(options.method==='GET'&&options.path.endsWith('/promotions'))result={items:duplicate?[{metadata:{annotations:{'helivanta.tesserix.app/bootstrap':'20261117-catalogue'}},status:{phase:'Succeeded'}}]:[]};
+  else if(options.method==='GET')result={spec:{promotionTemplate:{spec:{steps:[{uses:'argocd-wait'}]}}}};
+  const response=new EventEmitter();response.statusCode=200;callback(response);
+  response.emit('data',JSON.stringify(result));response.emit('end');
+ });return request;
+};
+await import(MODULE);
+const writes=calls.filter(row=>row.method==='POST');
+assert.equal(writes.length,duplicate?0:1);
+if(!duplicate){assert.equal(writes[0].body.spec.stage,'helivanta-growthbook-prod');assert.equal(writes[0].body.spec.freight,'4f99919758a9c5e15c3f65bc9f416870dbb062aa');assert.deepEqual(writes[0].body.spec.steps,[{uses:'argocd-wait'}]);}
+assert.ok(calls.every(row=>['GET','POST'].includes(row.method)));
+'''.replace('DUPLICATE', json.dumps(duplicate)).replace('MODULE', json.dumps(module))
+            result = subprocess.run(['node', '--input-type=module', '-'], input=code, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
